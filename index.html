@@ -550,6 +550,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
     <button class="atab" onclick="switchAdminTab('restock')">补货报告</button>
     <button class="atab" onclick="switchAdminTab('stats')">消费统计</button>
     <button class="atab" onclick="switchAdminTab('rooms')">🏠 房间设置</button>
+    <button class="atab" onclick="switchAdminTab('checks')">📋 查房项目</button>
     <button class="atab" onclick="switchAdminTab('staff')">👥 用户管理</button>
   </div>
   <div class="scr-body" style="padding-bottom:20px">
@@ -573,6 +574,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
       <div id="stats-content"></div>
     </div>
     <!-- Staff -->
+    <!-- Check Items -->
+    <div id="atab-checks" class="atab-body">
+      <div style="background:var(--pul);border-radius:var(--rad);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--pu)">
+        📋 管理员工查房时检查的项目。可按需要增删改，调整后即时生效，所有员工的查房页面会显示最新项目。
+      </div>
+      <div id="check-list"></div>
+      <div style="margin-top:12px;text-align:center">
+        <button class="btn btn-primary btn-sm" onclick="openCheckItemForm(null)">＋ 添加查房项</button>
+      </div>
+    </div>
     <div id="atab-staff" class="atab-body">
       <!-- Admin password card -->
       <div class="card" style="margin-bottom:14px">
@@ -719,6 +730,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
     <div class="drawer-btns">
       <button class="btn btn-ghost" onclick="closeModal('modal-staff')">取消</button>
       <button class="btn btn-primary" onclick="saveStaffForm()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ CHECK ITEM FORM DRAWER ═══════════════════════ -->
+<div class="overlay modal-sm" id="modal-check-item">
+  <div class="drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title" id="cif-title">添加查房项</div>
+    <div class="form-row">
+      <label class="form-lbl">项目名称 <span style="color:var(--r)">*</span></label>
+      <input class="form-input" id="cif-name" placeholder="如：电视、空调、地面">
+    </div>
+    <div class="form-row">
+      <label class="form-lbl">检查说明（可选）</label>
+      <input class="form-input" id="cif-desc" placeholder="如：开机正常、遥控器可用">
+    </div>
+    <div class="form-row">
+      <label class="form-lbl">Emoji 图标（可选）</label>
+      <input class="form-input" id="cif-icon" placeholder="📺" maxlength="4"
+        style="font-size:24px;text-align:center">
+    </div>
+    <input type="hidden" id="cif-id">
+    <div class="drawer-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-check-item')">取消</button>
+      <button class="btn btn-primary" onclick="saveCheckItemForm()">保存</button>
     </div>
   </div>
 </div>
@@ -975,23 +1012,21 @@ const DEFAULT_ROOM_DEFS = [
 ];
 let ROOM_DEFS = JSON.parse(JSON.stringify(DEFAULT_ROOM_DEFS));
 
-const CHECK_SECTIONS = [
-  {id:'appliances',title:'电器设备',icon:'🔌',items:[
-    {id:'tv',       name:'电视',         desc:'开机正常、遥控器可用、频道流畅'},
-    {id:'ac',       name:'空调',         desc:'制冷/制热正常、遥控可用、无异味'},
-    {id:'kettle',   name:'热水壶/热水器', desc:'通电加热正常、壶体洁净'},
-    {id:'computer', name:'电脑',         desc:'正常开机进入系统、网络连接正常'},
-    {id:'periph',   name:'电脑外设',     desc:'鼠标、键盘、音箱等完好可用'},
-  ]},
-  {id:'hygiene',title:'卫生检查',icon:'🧹',items:[
-    {id:'floor',    name:'地面',     desc:'无灰尘、毛发、污渍'},
-    {id:'bed',      name:'床铺床品', desc:'床单被罩洁净、枕套无污迹'},
-    {id:'bathroom', name:'卫生间',   desc:'马桶、洗手台、镜面、淋浴区洁净'},
-    {id:'furniture',name:'桌椅家具', desc:'表面无灰尘、摆放整齐'},
-    {id:'trash',    name:'垃圾桶',   desc:'已清空，垃圾袋完好'},
-    {id:'amenities',name:'一次性用品',desc:'毛巾洗漱用品齐全'},
-  ]},
+// 默认查房项目（扁平列表，保留旧 id 以兼容历史 roomData.checks）
+const DEFAULT_CHECK_ITEMS = [
+  {id:'tv',        name:'电视',         desc:'开机正常、遥控器可用、频道流畅', icon:'📺'},
+  {id:'ac',        name:'空调',         desc:'制冷/制热正常、遥控可用、无异味', icon:'❄️'},
+  {id:'kettle',    name:'热水壶/热水器', desc:'通电加热正常、壶体洁净',          icon:'☕'},
+  {id:'computer',  name:'电脑',         desc:'正常开机进入系统、网络连接正常',  icon:'💻'},
+  {id:'periph',    name:'电脑外设',     desc:'鼠标、键盘、音箱等完好可用',      icon:'🖱️'},
+  {id:'floor',     name:'地面',         desc:'无灰尘、毛发、污渍',              icon:'🧹'},
+  {id:'bed',       name:'床铺床品',     desc:'床单被罩洁净、枕套无污迹',        icon:'🛏️'},
+  {id:'bathroom',  name:'卫生间',       desc:'马桶、洗手台、镜面、淋浴区洁净',  icon:'🚽'},
+  {id:'furniture', name:'桌椅家具',     desc:'表面无灰尘、摆放整齐',            icon:'🪑'},
+  {id:'trash',     name:'垃圾桶',       desc:'已清空，垃圾袋完好',              icon:'🗑️'},
+  {id:'amenities', name:'一次性用品',   desc:'毛巾洗漱用品齐全',                icon:'🧴'},
 ];
+let CHECK_ITEMS = JSON.parse(JSON.stringify(DEFAULT_CHECK_ITEMS));
 
 // ═══════════════════════════════════════════════════════
 // STATE
@@ -1025,10 +1060,30 @@ function loadAll(){
     consumed = co ? JSON.parse(co) : {};
     const sl = localStorage.getItem('cfr_staff');
     staffList = sl ? JSON.parse(sl) : [];
+    // 查房项目：优先读新的扁平结构，否则尝试从旧 sections 迁移
+    const ci = localStorage.getItem('cfr_check_items');
+    if(ci){
+      CHECK_ITEMS = JSON.parse(ci);
+    } else {
+      const old = localStorage.getItem('cfr_check_sections');
+      if(old){
+        try {
+          const sections = JSON.parse(old);
+          if(Array.isArray(sections)){
+            const flat=[]; sections.forEach(s=>(s.items||[]).forEach(it=>flat.push({...it, icon: it.icon||s.icon||'✅'})));
+            if(flat.length) CHECK_ITEMS = flat;
+          }
+        } catch(e){}
+      }
+    }
     const usr = localStorage.getItem('cfr_user');
     if(usr){ const u=JSON.parse(usr); currentUser=u.name; currentRole=u.role; }
   } catch(e){}
   ROOM_DEFS.forEach(r=>{ if(!roomData[r.num]) roomData[r.num]={status:'pending'}; });
+}
+function saveCheckItems(){
+  localStorage.setItem('cfr_check_items', JSON.stringify(CHECK_ITEMS));
+  if(db) fsSyncCheckItems().catch(()=>{});
 }
 function saveRoomDefs(){
   localStorage.setItem('cfr_room_defs', JSON.stringify(ROOM_DEFS));
@@ -1172,9 +1227,9 @@ function issueCount(d){ return d.checks?Object.values(d.checks).filter(v=>v==='i
 function issueNames(d){
   if(!d.checks) return [];
   const names=[];
-  CHECK_SECTIONS.forEach(sec=>sec.items.forEach(item=>{
+  CHECK_ITEMS.forEach(item=>{
     if(d.checks[item.id]==='issue') names.push(item.name);
-  }));
+  });
   return names;
 }
 
@@ -1222,31 +1277,30 @@ function buildInsForm(def){
     </span>
   </div>`;
 
-  // Check sections
-  CHECK_SECTIONS.forEach(sec=>{
-    const done=sec.items.filter(i=>insState.checks[i.id]).length;
-    html+=`<div class="card">
-      <div class="card-hd">
-        <span class="card-hd-icon">${sec.icon}</span>
-        <span class="card-hd-title">${sec.title}</span>
-        <span class="card-hd-note" id="prog-${sec.id}">${done}/${sec.items.length}</span>
-      </div>`;
-    sec.items.forEach(item=>{
-      const v=insState.checks[item.id]||'';
-      html+=`<div class="ci">
-        <div class="ci-info">
-          <div class="ci-name">${item.name}</div>
-          <div class="ci-desc">${item.desc}</div>
-          <div class="ci-tog">
-            <button class="tog ${v==='ok'?'t-ok':''}" onclick="setChk('${item.id}','ok','${sec.id}')">✓ 正常</button>
-            <button class="tog ${v==='issue'?'t-issue':''}" onclick="setChk('${item.id}','issue','${sec.id}')">✗ 异常</button>
-            <button class="tog ${v==='na'?'t-na':''}" onclick="setChk('${item.id}','na','${sec.id}')">— 无此项</button>
-          </div>
+  // Check items（扁平列表）
+  const done = CHECK_ITEMS.filter(i=>insState.checks[i.id]).length;
+  html+=`<div class="card">
+    <div class="card-hd">
+      <span class="card-hd-icon">📋</span>
+      <span class="card-hd-title">查房检查项</span>
+      <span class="card-hd-note" id="prog-checks">${done}/${CHECK_ITEMS.length}</span>
+    </div>`;
+  CHECK_ITEMS.forEach(item=>{
+    const v=insState.checks[item.id]||'';
+    const icon = item.icon ? `<span style="font-size:20px;margin-right:6px">${item.icon}</span>` : '';
+    html+=`<div class="ci">
+      <div class="ci-info">
+        <div class="ci-name">${icon}${item.name}</div>
+        <div class="ci-desc">${item.desc||''}</div>
+        <div class="ci-tog">
+          <button class="tog ${v==='ok'?'t-ok':''}" onclick="setChk('${item.id}','ok')">✓ 正常</button>
+          <button class="tog ${v==='issue'?'t-issue':''}" onclick="setChk('${item.id}','issue')">✗ 异常</button>
+          <button class="tog ${v==='na'?'t-na':''}" onclick="setChk('${item.id}','na')">— 无此项</button>
         </div>
-      </div>`;
-    });
-    html+=`</div>`;
+      </div>
+    </div>`;
   });
+  html+=`</div>`;
 
   // ── Inventory section ──
   html+=`<div class="card">
@@ -1340,7 +1394,7 @@ function calcInvTotal(){
   },0);
 }
 
-function setChk(id,val,secId){
+function setChk(id,val){
   insState.checks[id]=val;
   // update toggle buttons
   document.querySelectorAll(`[onclick*="'${id}'"]`).forEach(btn=>{
@@ -1348,13 +1402,10 @@ function setChk(id,val,secId){
     const v=btn.getAttribute('onclick').match(/'(ok|issue|na)'/)[1];
     if(v===val) btn.className='tog t-'+({'ok':'ok','issue':'issue','na':'na'}[val]);
   });
-  // update progress
-  const sec=CHECK_SECTIONS.find(s=>s.id===secId);
-  if(sec){
-    const done=sec.items.filter(i=>insState.checks[i.id]).length;
-    const el=document.getElementById('prog-'+secId);
-    if(el) el.textContent=done+'/'+sec.items.length;
-  }
+  // update overall progress
+  const done=CHECK_ITEMS.filter(i=>insState.checks[i.id]).length;
+  const el=document.getElementById('prog-checks');
+  if(el) el.textContent=done+'/'+CHECK_ITEMS.length;
 }
 
 // Photos
@@ -1540,7 +1591,7 @@ function renderHistory(){
 // ═══════════════════════════════════════════════════════
 function switchAdminTab(tab){
   document.querySelectorAll('.atab').forEach((b,i)=>{
-    const tabs=['products','inventory','restock','stats','rooms','staff'];
+    const tabs=['products','inventory','restock','stats','rooms','checks','staff'];
     b.classList.toggle('on',tabs[i]===tab);
   });
   document.querySelectorAll('.atab-body').forEach(b=>b.classList.remove('on'));
@@ -1551,6 +1602,7 @@ function switchAdminTab(tab){
   if(tab==='restock')   renderRestock();
   if(tab==='stats')     renderStatsAdmin();
   if(tab==='rooms')     renderRoomSettings();
+  if(tab==='checks')    renderCheckItems();
   if(tab==='staff')     renderStaffAdmin();
 }
 
@@ -2209,6 +2261,85 @@ function saveApiKey(){
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 
 // ═══════════════════════════════════════════════════════
+// CHECK ITEMS MANAGEMENT
+// ═══════════════════════════════════════════════════════
+function renderCheckItems(){
+  const list = document.getElementById('check-list');
+  if(!CHECK_ITEMS.length){
+    list.innerHTML=`<div class="empty" style="padding:32px 24px">
+      <div class="empty-icon">📋</div>
+      <div style="margin-bottom:6px">暂无查房项</div>
+      <div style="font-size:12px">点下方按钮添加第一项</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML = CHECK_ITEMS.map(it=>{
+    const icon = it.icon || '✅';
+    const safeId = it.id.replace(/'/g,"\\'");
+    return `<div class="staff-item">
+      <div class="staff-avatar" style="background:var(--pul);color:var(--pu);font-size:20px">${icon}</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0">
+        <div style="font-size:15px;font-weight:600">${escapeHtml(it.name||'')}</div>
+        <div style="font-size:12px;color:var(--g500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(it.desc||'')}</div>
+      </div>
+      <div class="staff-acts">
+        <button class="btn btn-ghost btn-xs" onclick="openCheckItemForm('${safeId}')">编辑</button>
+        <button class="btn btn-xs" style="background:var(--rl);color:var(--r)"
+          onclick="deleteCheckItem('${safeId}')">删除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function openCheckItemForm(id){
+  const it = id ? CHECK_ITEMS.find(x=>x.id===id) : null;
+  document.getElementById('cif-title').textContent = it ? '编辑查房项' : '添加查房项';
+  document.getElementById('cif-name').value = it ? (it.name||'') : '';
+  document.getElementById('cif-desc').value = it ? (it.desc||'') : '';
+  document.getElementById('cif-icon').value = it ? (it.icon||'') : '';
+  document.getElementById('cif-id').value   = it ? it.id : '';
+  openModal('modal-check-item');
+}
+
+function saveCheckItemForm(){
+  const name = (document.getElementById('cif-name').value||'').trim();
+  const desc = (document.getElementById('cif-desc').value||'').trim();
+  const icon = (document.getElementById('cif-icon').value||'').trim();
+  const id   = document.getElementById('cif-id').value;
+  if(!name){ toast('请输入项目名称'); return; }
+  if(id){
+    const idx = CHECK_ITEMS.findIndex(x=>x.id===id);
+    if(idx>=0) CHECK_ITEMS[idx] = {id, name, desc, icon};
+    toast(`✓ ${name} 已更新`);
+  } else {
+    const newId = 'ci_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    CHECK_ITEMS.push({id:newId, name, desc, icon});
+    toast(`✓ 已添加「${name}」`);
+  }
+  saveCheckItems();
+  closeModal('modal-check-item');
+  renderCheckItems();
+}
+
+function deleteCheckItem(id){
+  const it = CHECK_ITEMS.find(x=>x.id===id);
+  if(!it) return;
+  openConfirm('删除查房项',
+    `确认删除「${it.name}」？删除后所有员工的查房页面将不再显示此项；今日已记录的此项数据会保留在历史中。`,
+    ()=>{
+      CHECK_ITEMS = CHECK_ITEMS.filter(x=>x.id!==id);
+      saveCheckItems();
+      renderCheckItems();
+      toast(`已删除「${it.name}」`);
+    });
+}
+
+// ═══════════════════════════════════════════════════════
 // USER MANAGEMENT
 // ═══════════════════════════════════════════════════════
 function normalizeStaff(s){
@@ -2423,10 +2554,11 @@ let _fsListener = null;
 
 // Firestore document paths
 const FSP = {
-  rooms:    'hotel_config/rooms',
-  products: 'hotel_config/products',
-  staff:    'hotel_config/staff',
-  daily:    d => 'hotel_daily/' + d,
+  rooms:       'hotel_config/rooms',
+  products:    'hotel_config/products',
+  staff:       'hotel_config/staff',
+  checkItems:  'hotel_config/check_items',
+  daily:       d => 'hotel_daily/' + d,
 };
 
 function setSyncDot(state){
@@ -2459,11 +2591,12 @@ async function fsLoadAll(){
   if(!db) return;
   setSyncDot('syncing');
   try{
-    const [rSnap, pSnap, dSnap, sSnap] = await Promise.all([
+    const [rSnap, pSnap, dSnap, sSnap, cSnap] = await Promise.all([
       db.doc(FSP.rooms).get(),
       db.doc(FSP.products).get(),
       db.doc(FSP.daily(todayKey())).get(),
       db.doc(FSP.staff).get(),
+      db.doc(FSP.checkItems).get(),
     ]);
     if(rSnap.exists){ const d=rSnap.data(); if(Array.isArray(d.defs)&&d.defs.length) ROOM_DEFS=d.defs; }
     if(pSnap.exists){
@@ -2472,6 +2605,7 @@ async function fsLoadAll(){
       if(d.stock) stockData=d.stock;
     }
     if(sSnap.exists){ const d=sSnap.data(); if(Array.isArray(d.list)) staffList=d.list; }
+    if(cSnap.exists){ const d=cSnap.data(); if(Array.isArray(d.items)&&d.items.length) CHECK_ITEMS=d.items; }
     if(dSnap.exists){
       const d=dSnap.data();
       // Merge: keep local photos, use cloud status/checks/inventory
@@ -2550,6 +2684,11 @@ async function fsSyncRoomDefs(){
 async function fsSyncStaff(){
   if(!db) return;
   await db.doc(FSP.staff).set({list:staffList});
+}
+
+async function fsSyncCheckItems(){
+  if(!db) return;
+  await db.doc(FSP.checkItems).set({items:CHECK_ITEMS});
 }
 
 // ── Firebase config UI ──

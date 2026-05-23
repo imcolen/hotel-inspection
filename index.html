@@ -907,6 +907,10 @@ projectId: "hotel-inspection-xxx",
 <input type="file" id="photo-in"     accept="image/*" capture="environment" style="display:none">
 <input type="file" id="prod-photo-in" accept="image/*" capture="environment" style="display:none">
 
+<!-- Firebase SDK must load BEFORE main script so firebase is defined when init runs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <script>
 // ═══════════════════════════════════════════════════════
 // DEFAULT DATA
@@ -2503,7 +2507,5 @@ if(_fbCfg && typeof firebase !== 'undefined'){
   afterLoad();
 }
 </script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </body>
 </html>

@@ -392,6 +392,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
 .api-tag.no{background:var(--rl);color:var(--r)}
 .api-tag.spin{background:var(--pl);color:var(--pd)}
 .api-source{font-size:11px;color:var(--g400);margin-top:4px}
+/* ══ Cloud Sync Status ══ */
+.sync-dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--g300);margin-right:3px;vertical-align:middle;transition:background .3s}
+.sync-dot.online{background:#22c55e}
+.sync-dot.syncing{background:#f59e0b;animation:pulse .8s ease-in-out infinite}
+.sync-dot.error{background:var(--r)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.fb-code-area{width:100%;border:1.5px solid var(--g200);border-radius:10px;
+  padding:12px 14px;font-size:12px;font-family:monospace;color:var(--g800);
+  background:var(--g50);outline:none;resize:vertical;min-height:120px;
+  transition:border-color .15s}
+.fb-code-area:focus{border-color:var(--p);background:#fff}
+.fb-step{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--g100)}
+.fb-step:last-child{border-bottom:none}
+.fb-step-num{background:var(--p);color:#fff;border-radius:50%;width:22px;height:22px;
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.fb-step-txt{font-size:13px;color:var(--g700);line-height:1.6}
+.fb-step-txt a{color:var(--p)}
+
 /* ══ Room Settings ══ */
 .room-cfg-item{background:#fff;border-radius:var(--rad);box-shadow:var(--sh);
   padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
@@ -511,6 +530,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
     <button class="tb-back" onclick="adminLogout()">‹</button>
     <div class="tb-title">管理后台</div>
     <span style="font-size:13px;opacity:.8;margin-right:8px" id="adm-user"></span>
+    <button class="tb-act" id="fb-btn" onclick="openFbSettings()" style="margin-right:6px">
+      <span class="sync-dot" id="sync-dot"></span>云同步
+    </button>
     <button class="tb-act" onclick="openModal('modal-apikey');loadApiKeyField()">⚙️ API</button>
   </div>
   <div class="atabs">
@@ -823,6 +845,62 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
   </div>
 </div>
 
+<!-- ═══════════════════════ FIREBASE CONFIG ═══════════════════════ -->
+<div class="overlay" id="modal-firebase">
+  <div class="drawer" style="max-height:92vh">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title">☁️ 云同步设置（Firebase）</div>
+
+    <!-- Status bar -->
+    <div id="fb-status-bar" style="background:var(--g100);border-radius:10px;
+      padding:10px 14px;margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:8px">
+      <span class="sync-dot" id="fb-modal-dot"></span>
+      <span id="fb-status-txt">未配置（当前使用本地存储）</span>
+    </div>
+
+    <!-- Step-by-step guide -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--g700);margin-bottom:8px">📋 如何获取配置（约 3 分钟）</div>
+      <div class="fb-step">
+        <div class="fb-step-num">1</div>
+        <div class="fb-step-txt">打开 <a href="https://console.firebase.google.com/" target="_blank">Firebase 控制台</a>，用 Google 账号登录，点「添加项目」</div>
+      </div>
+      <div class="fb-step">
+        <div class="fb-step-num">2</div>
+        <div class="fb-step-txt">项目名称填 <b>hotel-inspection</b>，关闭 Google Analytics，点「创建项目」</div>
+      </div>
+      <div class="fb-step">
+        <div class="fb-step-num">3</div>
+        <div class="fb-step-txt">进入项目后，点左侧「构建 → Firestore Database」→「创建数据库」→「以测试模式开始」→ 选择区域（asia-east2 香港）</div>
+      </div>
+      <div class="fb-step">
+        <div class="fb-step-num">4</div>
+        <div class="fb-step-txt">回到「项目概览」，点「&lt;/&gt; 网页」图标，给应用起名，点「注册应用」，复制 <b>firebaseConfig</b> 对象里的内容（花括号内全部）</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label class="form-lbl">粘贴 firebaseConfig 内容 <span style="color:var(--r)">*</span></label>
+      <textarea class="fb-code-area" id="fb-config-in"
+        placeholder='粘贴类似这样的内容：
+apiKey: "AIzaSy...",
+authDomain: "hotel-inspection-xxx.firebaseapp.com",
+projectId: "hotel-inspection-xxx",
+...'></textarea>
+      <div class="form-hint">直接粘贴花括号内的内容，或整个 firebaseConfig = { ... } 都可以</div>
+    </div>
+
+    <div id="fb-test-result" style="display:none;margin-top:10px;padding:10px 14px;
+      border-radius:10px;font-size:13px"></div>
+
+    <div class="drawer-btns">
+      <button class="btn btn-ghost" onclick="clearFbConfig()" style="flex:0 0 auto;padding:13px 14px">清除</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-firebase')">取消</button>
+      <button class="btn btn-primary" onclick="saveFbConfig()">连接并同步</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 <!-- Photo inputs -->
@@ -908,13 +986,18 @@ function loadAll(){
 }
 function saveRoomDefs(){
   localStorage.setItem('cfr_room_defs', JSON.stringify(ROOM_DEFS));
+  if(db) fsSyncRoomDefs().catch(()=>{});
 }
 
-function saveRooms(){ localStorage.setItem('cfr_rooms_'+todayKey(), JSON.stringify(roomData)); }
+function saveRooms(){
+  localStorage.setItem('cfr_rooms_'+todayKey(), JSON.stringify(roomData));
+  if(db) fsSyncRooms().catch(()=>{});
+}
 function saveAdmin(){
   localStorage.setItem('cfr_products', JSON.stringify(products));
   localStorage.setItem('cfr_stock', JSON.stringify(stockData));
   localStorage.setItem('cfr_consumed_'+todayKey(), JSON.stringify(consumed));
+  if(db) fsSyncAdmin().catch(()=>{});
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2176,17 +2259,251 @@ function resetRoomsToDefault(){
 }
 
 // ═══════════════════════════════════════════════════════
+// FIREBASE CLOUD SYNC
+// ═══════════════════════════════════════════════════════
+let db = null;
+let _fsListener = null;
+
+// Firestore document paths
+const FSP = {
+  rooms:    'hotel_config/rooms',
+  products: 'hotel_config/products',
+  daily:    d => 'hotel_daily/' + d,
+};
+
+function setSyncDot(state){
+  // state: '' | 'online' | 'syncing' | 'error'
+  document.querySelectorAll('.sync-dot').forEach(el=>{
+    el.className = 'sync-dot' + (state ? ' '+state : '');
+  });
+}
+
+function getFbStoredConfig(){
+  try{ return JSON.parse(localStorage.getItem('cfr_fb')||'null'); }catch(e){ return null; }
+}
+
+async function initFirebase(cfg){
+  if(typeof firebase === 'undefined'){ setSyncDot('error'); return false; }
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(cfg);
+    db = firebase.firestore();
+    setSyncDot('online');
+    return true;
+  }catch(e){
+    console.error('Firebase init:', e);
+    db = null; setSyncDot('error');
+    return false;
+  }
+}
+
+// ── Load from Firestore (once, on startup) ──
+async function fsLoadAll(){
+  if(!db) return;
+  setSyncDot('syncing');
+  try{
+    const [rSnap, pSnap, dSnap] = await Promise.all([
+      db.doc(FSP.rooms).get(),
+      db.doc(FSP.products).get(),
+      db.doc(FSP.daily(todayKey())).get(),
+    ]);
+    if(rSnap.exists){ const d=rSnap.data(); if(Array.isArray(d.defs)&&d.defs.length) ROOM_DEFS=d.defs; }
+    if(pSnap.exists){
+      const d=pSnap.data();
+      if(Array.isArray(d.items)&&d.items.length) products=d.items;
+      if(d.stock) stockData=d.stock;
+    }
+    if(dSnap.exists){
+      const d=dSnap.data();
+      // Merge: keep local photos, use cloud status/checks/inventory
+      if(d.rooms){
+        Object.keys(d.rooms).forEach(num=>{
+          const localPhotos = (roomData[num]||{}).photos || [];
+          roomData[num] = {...(roomData[num]||{}), ...d.rooms[num], photos: localPhotos};
+        });
+      }
+      if(d.consumed) consumed=d.consumed;
+    }
+    ROOM_DEFS.forEach(r=>{ if(!roomData[r.num]) roomData[r.num]={status:'pending'}; });
+    setSyncDot('online');
+  }catch(e){
+    console.error('fsLoadAll:', e);
+    setSyncDot('error');
+  }
+}
+
+// ── Real-time listener for today's room data ──
+function setupFsListeners(){
+  if(!db) return;
+  if(_fsListener){ _fsListener(); _fsListener=null; }
+  _fsListener = db.doc(FSP.daily(todayKey())).onSnapshot(snap=>{
+    if(!snap.exists||!snap.metadata.hasPendingWrites){
+      // Remote update (not our own write)
+      if(snap.exists){
+        const d=snap.data();
+        if(d.rooms){
+          Object.keys(d.rooms).forEach(num=>{
+            const localPhotos=(roomData[num]||{}).photos||[];
+            roomData[num]={...(roomData[num]||{}),...d.rooms[num],photos:localPhotos};
+          });
+        }
+        if(d.consumed) consumed=d.consumed;
+        localStorage.setItem('cfr_rooms_'+todayKey(), JSON.stringify(roomData));
+      }
+      // Refresh visible screens
+      const dashEl=document.getElementById('sdash');
+      const rptEl =document.getElementById('sreport');
+      if(dashEl&&dashEl.classList.contains('active')) renderDash();
+      if(rptEl &&rptEl .classList.contains('active')) renderReport();
+    }
+    setSyncDot('online');
+  }, err=>{ console.error('FS listener:', err); setSyncDot('error'); });
+}
+
+// ── Firestore write helpers (fire-and-forget) ──
+async function fsSyncRooms(){
+  if(!db) return;
+  setSyncDot('syncing');
+  // Strip photos before uploading (too large)
+  const stripped = {};
+  Object.keys(roomData).forEach(k=>{
+    const r={...roomData[k]}; delete r.photos; stripped[k]=r;
+  });
+  await db.doc(FSP.daily(todayKey())).set({rooms: stripped},{merge:true});
+  setSyncDot('online');
+}
+
+async function fsSyncAdmin(){
+  if(!db) return;
+  setSyncDot('syncing');
+  await Promise.all([
+    db.doc(FSP.products).set({items:products, stock:stockData}),
+    db.doc(FSP.daily(todayKey())).set({consumed},{merge:true}),
+  ]);
+  setSyncDot('online');
+}
+
+async function fsSyncRoomDefs(){
+  if(!db) return;
+  await db.doc(FSP.rooms).set({defs:ROOM_DEFS});
+}
+
+// ── Firebase config UI ──
+function openFbSettings(){
+  const cfg = getFbStoredConfig();
+  const dot = document.getElementById('fb-modal-dot');
+  const txt = document.getElementById('fb-status-txt');
+  if(db){
+    dot.className='sync-dot online';
+    txt.textContent='已连接云端同步';
+  } else if(cfg){
+    dot.className='sync-dot error';
+    txt.textContent='配置已保存但连接失败，检查网络或配置';
+  } else {
+    dot.className='sync-dot';
+    txt.textContent='未配置（当前使用本地存储）';
+  }
+  // Pre-fill if config exists
+  if(cfg){
+    document.getElementById('fb-config-in').value =
+      Object.entries(cfg).map(([k,v])=>`  ${k}: "${v}"`).join(',\n');
+  }
+  document.getElementById('fb-test-result').style.display='none';
+  openModal('modal-firebase');
+}
+
+function parseFbConfigText(raw){
+  // Accept: plain key:value lines, JSON object, or full firebaseConfig = {...}
+  let clean = raw.trim();
+  // Extract content inside braces if present
+  const m = clean.match(/\{([\s\S]*)\}/);
+  if(m) clean = m[1];
+  // Convert JS object literals to JSON
+  clean = clean
+    .replace(/\/\/.*$/gm,'')          // remove // comments
+    .replace(/,\s*$/,'')              // trailing comma
+    .replace(/([{,]\s*)(\w+)\s*:/g,'$1"$2":') // quote keys
+    .replace(/:\s*"([^"]*)"/g, (_, v) => `:"${v}"`) // keep quoted
+    .replace(/:\s*([^",\n\{\}]+)/g, (full, v) => { // quote bare values
+      v=v.trim(); if(v==='true'||v==='false'||v==='null'||!isNaN(v)) return ':'+v;
+      return `:"${v}"`;
+    });
+  try{ return JSON.parse('{'+clean+'}'); }catch(e){ return null; }
+}
+
+async function saveFbConfig(){
+  const raw = (document.getElementById('fb-config-in').value||'').trim();
+  if(!raw){ toast('请粘贴 Firebase 配置'); return; }
+  const cfg = parseFbConfigText(raw);
+  const res = document.getElementById('fb-test-result');
+  res.style.display='block';
+  if(!cfg||!cfg.apiKey||!cfg.projectId){
+    res.style.background='var(--rl)'; res.style.color='var(--r)';
+    res.textContent='❌ 配置格式有误，请重新复制 firebaseConfig 的内容';
+    return;
+  }
+  res.style.background='var(--pl)'; res.style.color='var(--pd)';
+  res.textContent='⏳ 正在连接 Firebase...';
+  localStorage.setItem('cfr_fb', JSON.stringify(cfg));
+  const ok = await initFirebase(cfg);
+  if(ok){
+    res.style.background='var(--gl)'; res.style.color='var(--g)';
+    res.textContent='✅ 连接成功！正在加载云端数据...';
+    await fsLoadAll();
+    setupFsListeners();
+    // Re-render current screen
+    if(document.getElementById('sdash').classList.contains('active')) renderDash();
+    closeModal('modal-firebase');
+    toast('☁️ 云同步已开启，数据实时共享');
+  } else {
+    res.style.background='var(--rl)'; res.style.color='var(--r)';
+    res.textContent='❌ 连接失败，请检查配置或网络';
+  }
+}
+
+function clearFbConfig(){
+  openConfirm('清除云同步配置','将断开 Firebase 连接，数据将继续保存在本机。已同步到云端的数据不会删除。',()=>{
+    localStorage.removeItem('cfr_fb');
+    db=null; setSyncDot('');
+    if(_fsListener){ _fsListener(); _fsListener=null; }
+    closeModal('modal-firebase');
+    toast('已切换回本地存储模式');
+  });
+}
+
+// ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
 loadAll();
-if(currentUser){
-  if(currentRole==='admin'){
-    document.getElementById('adm-user').textContent=currentUser;
-    show('sadmin'); switchAdminTab('products');
-  } else {
-    renderDash(); show('sdash');
+
+function afterLoad(){
+  if(currentUser){
+    if(currentRole==='admin'){
+      document.getElementById('adm-user').textContent=currentUser;
+      show('sadmin'); switchAdminTab('products');
+    } else {
+      renderDash(); show('sdash');
+    }
   }
 }
+
+// Try to init Firebase if config stored, then re-render with cloud data
+const _fbCfg = getFbStoredConfig();
+if(_fbCfg && typeof firebase !== 'undefined'){
+  initFirebase(_fbCfg).then(ok=>{
+    if(ok){
+      fsLoadAll().then(()=>{
+        afterLoad();
+        setupFsListeners();
+      });
+    } else {
+      afterLoad();
+    }
+  });
+} else {
+  afterLoad();
+}
 </script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </body>
 </html>

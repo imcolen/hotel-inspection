@@ -550,7 +550,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
     <button class="atab" onclick="switchAdminTab('restock')">补货报告</button>
     <button class="atab" onclick="switchAdminTab('stats')">消费统计</button>
     <button class="atab" onclick="switchAdminTab('rooms')">🏠 房间设置</button>
-    <button class="atab" onclick="switchAdminTab('staff')">👥 员工管理</button>
+    <button class="atab" onclick="switchAdminTab('staff')">👥 用户管理</button>
   </div>
   <div class="scr-body" style="padding-bottom:20px">
     <!-- Products -->
@@ -574,19 +574,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
     </div>
     <!-- Staff -->
     <div id="atab-staff" class="atab-body">
+      <!-- Admin password card -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd">
+          <span class="card-hd-icon">🔑</span>
+          <span class="card-hd-title">管理员账号</span>
+        </div>
+        <div style="padding:14px 16px;display:flex;align-items:center;gap:12px">
+          <div class="staff-avatar" style="background:var(--ol);color:var(--o)">A</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:600">admin</div>
+            <div style="font-size:12px;color:var(--g500)">主管理员（默认账号）</div>
+          </div>
+          <button class="btn btn-ghost btn-xs" onclick="openAdminPwdForm()">修改密码</button>
+        </div>
+      </div>
+      <!-- Staff list section -->
       <div style="background:var(--pl);border-radius:var(--rad);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--pd)">
-        👥 管理员工账号，员工用姓名+密码登录。若列表为空，员工可用任意姓名+密码 <b>1234</b> 登录。
+        👥 管理员工账号，员工用姓名+密码登录。若列表为空，员工可用任意姓名+密码 <b>1234</b> 登录。角色为「管理员」的账号也能进入后台。
       </div>
       <div id="staff-list"></div>
       <div style="margin-top:12px;text-align:center">
-        <button class="btn btn-primary btn-sm" onclick="openStaffForm(null)">＋ 添加员工</button>
+        <button class="btn btn-primary btn-sm" onclick="openStaffForm(null)">＋ 添加用户</button>
       </div>
     </div>
     <!-- Rooms -->
     <div id="atab-rooms" class="atab-body">
-      <!-- Batch add -->
+      <!-- Batch generate (overwrite) -->
       <div class="rooms-batch">
-        <div class="rooms-batch-title">🏗️ 批量添加房间</div>
+        <div class="rooms-batch-title">🏗️ 生成房间</div>
         <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
           <div>
             <div style="font-size:11px;color:var(--pu);margin-bottom:4px">起始房间号</div>
@@ -600,24 +616,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
           </div>
           <div>
             <div style="font-size:11px;color:transparent;margin-bottom:4px">-</div>
-            <button class="btn btn-primary btn-sm" onclick="batchAddRooms()" style="height:40px">添加</button>
+            <button class="btn btn-primary btn-sm" onclick="batchAddRooms()" style="height:40px">生成</button>
           </div>
         </div>
         <div style="font-size:12px;color:var(--pu);margin-top:8px;opacity:.75">
-          例：起始号 101，房间数 5 → 生成 101、102、103、104、105
+          填起始号和房间数，自动按顺序生成全部房间。如已有房间会提示是否替换。
         </div>
       </div>
-      <!-- Add single room button -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:600;color:var(--g500)">房间列表</div>
-        <button class="btn btn-primary btn-sm" onclick="openRoomForm(null)">＋ 添加单间</button>
-      </div>
-      <!-- Reset to default -->
+      <!-- Room list (read-only except per-room delete) -->
+      <div style="font-size:12px;font-weight:600;color:var(--g500);margin-bottom:10px">房间列表</div>
       <div id="room-cfg-list"></div>
-      <div style="margin-top:12px;text-align:center">
-        <button class="btn btn-ghost btn-sm" onclick="resetRoomsToDefault()"
-          style="font-size:12px;color:var(--r);border-color:var(--rl)">↺ 恢复默认房间配置</button>
-      </div>
     </div>
   </div>
   <!-- FAB group for adding products -->
@@ -682,40 +690,59 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
   </div>
 </div>
 
-<!-- ═══════════════════════ ROOM FORM DRAWER ═══════════════════════ -->
-<div class="overlay modal-sm" id="modal-room">
-  <div class="drawer">
-    <div class="drawer-handle"></div>
-    <div class="drawer-title" id="rf-title">添加房间</div>
-    <div class="form-row">
-      <label class="form-lbl">房间号 <span style="color:var(--r)">*</span></label>
-      <input class="form-input" id="rf-num" placeholder="如 101、202" maxlength="8">
-    </div>
-    <input type="hidden" id="rf-orig-num">
-    <div class="drawer-btns">
-      <button class="btn btn-ghost" onclick="closeModal('modal-room')">取消</button>
-      <button class="btn btn-primary" onclick="saveRoom()">保存</button>
-    </div>
-  </div>
-</div>
 
 <!-- ═══════════════════════ STAFF FORM DRAWER ═══════════════════════ -->
 <div class="overlay modal-sm" id="modal-staff">
   <div class="drawer">
     <div class="drawer-handle"></div>
-    <div class="drawer-title" id="sf-title">添加员工</div>
+    <div class="drawer-title" id="sf-title">添加用户</div>
     <div class="form-row">
-      <label class="form-lbl">员工姓名 <span style="color:var(--r)">*</span></label>
+      <label class="form-lbl">用户姓名 <span style="color:var(--r)">*</span></label>
       <input class="form-input" id="sf-name" placeholder="如：小王、张三">
     </div>
     <div class="form-row">
       <label class="form-lbl">登录密码 <span style="color:var(--r)">*</span></label>
       <input class="form-input" id="sf-pwd" type="password" placeholder="默认 1234">
     </div>
+    <div class="form-row">
+      <label class="form-lbl">角色</label>
+      <select class="form-select form-input" id="sf-role">
+        <option value="staff">普通员工</option>
+        <option value="admin">管理员</option>
+      </select>
+    </div>
+    <div class="form-row" style="display:flex;align-items:center;gap:10px">
+      <input type="checkbox" id="sf-enabled" checked style="width:18px;height:18px">
+      <label for="sf-enabled" style="font-size:14px;color:var(--g700);cursor:pointer">启用账号（禁用后该用户无法登录）</label>
+    </div>
     <input type="hidden" id="sf-orig-name">
     <div class="drawer-btns">
       <button class="btn btn-ghost" onclick="closeModal('modal-staff')">取消</button>
       <button class="btn btn-primary" onclick="saveStaffForm()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ADMIN PASSWORD DRAWER ═══════════════════════ -->
+<div class="overlay modal-sm" id="modal-admin-pwd">
+  <div class="drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title">修改管理员密码</div>
+    <div class="form-row">
+      <label class="form-lbl">原密码 <span style="color:var(--r)">*</span></label>
+      <input class="form-input" id="ap-old" type="password" placeholder="当前管理员密码">
+    </div>
+    <div class="form-row">
+      <label class="form-lbl">新密码 <span style="color:var(--r)">*</span></label>
+      <input class="form-input" id="ap-new" type="password" placeholder="至少 4 位">
+    </div>
+    <div class="form-row">
+      <label class="form-lbl">确认新密码 <span style="color:var(--r)">*</span></label>
+      <input class="form-input" id="ap-new2" type="password" placeholder="再次输入新密码">
+    </div>
+    <div class="drawer-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-admin-pwd')">取消</button>
+      <button class="btn btn-primary" onclick="saveAdminPwd()">保存</button>
     </div>
   </div>
 </div>
@@ -1052,12 +1079,26 @@ function doLogin(){
   if(!name){ toast('请输入姓名'); return; }
   if(!pwd) { toast('请输入密码'); return; }
   if(loginRole==='admin'){
-    if(pwd!=='admin888'){ toast('管理员密码错误'); return; }
+    // 管理员入口：可用 admin 主账号，或 staffList 中 role=admin 且未禁用的用户
+    const adminPwd = (typeof getAdminPwd==='function') ? getAdminPwd() : 'admin888';
+    if(name.toLowerCase()==='admin'){
+      if(pwd!==adminPwd){ toast('管理员密码错误'); return; }
+    } else {
+      const found = staffList.find(s=>s.name===name);
+      if(!found){ toast('管理员账号不存在'); return; }
+      const u = normalizeStaff(found);
+      if(u.role!=='admin'){ toast('该账号不是管理员，请用员工入口登录'); return; }
+      if(u.disabled){ toast('该账号已被禁用'); return; }
+      if(u.pwd!==pwd){ toast('管理员密码错误'); return; }
+    }
   } else {
+    // 员工入口：staffList 中（任意角色但未禁用）匹配；列表空则回落 1234
     if(staffList.length>0){
       const found=staffList.find(s=>s.name===name);
       if(!found){ toast('员工不存在，请联系管理员添加'); return; }
-      if(found.pwd!==pwd){ toast('密码错误'); return; }
+      const u = normalizeStaff(found);
+      if(u.disabled){ toast('该账号已被禁用，请联系管理员'); return; }
+      if(u.pwd!==pwd){ toast('密码错误'); return; }
     } else {
       if(pwd!=='1234'){ toast('员工密码错误（默认 1234）'); return; }
     }
@@ -2168,8 +2209,18 @@ function saveApiKey(){
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 
 // ═══════════════════════════════════════════════════════
-// STAFF MANAGEMENT
+// USER MANAGEMENT
 // ═══════════════════════════════════════════════════════
+function normalizeStaff(s){
+  // 向后兼容旧数据：缺省 role='staff'，disabled=false
+  return {
+    name: s.name,
+    pwd: s.pwd,
+    role: s.role || 'staff',
+    disabled: !!s.disabled,
+  };
+}
+
 function renderStaffAdmin(){
   const list = document.getElementById('staff-list');
   if(!staffList.length){
@@ -2180,24 +2231,43 @@ function renderStaffAdmin(){
     </div>`;
     return;
   }
-  list.innerHTML=staffList.map(s=>`
-    <div class="staff-item">
-      <div class="staff-avatar">${s.name.slice(0,1)}</div>
-      <div class="staff-name">${s.name}</div>
-      <div class="staff-acts">
-        <button class="btn btn-ghost btn-xs" onclick="openStaffForm('${s.name.replace(/'/g,"\\'")}')" >改密码</button>
-        <button class="btn btn-xs" style="background:var(--rl);color:var(--r)"
-          onclick="deleteStaff('${s.name.replace(/'/g,"\\'")}')" >删除</button>
-      </div>
-    </div>`).join('');
+  list.innerHTML=staffList.map(raw=>{
+    const s = normalizeStaff(raw);
+    const safeName = s.name.replace(/'/g,"\\'");
+    const roleBadge = s.role==='admin'
+      ? `<span style="font-size:11px;background:var(--ol);color:var(--o);padding:2px 7px;border-radius:8px;font-weight:600">管理员</span>`
+      : `<span style="font-size:11px;background:var(--pl);color:var(--pd);padding:2px 7px;border-radius:8px;font-weight:600">员工</span>`;
+    const statusBadge = s.disabled
+      ? `<span style="font-size:11px;background:var(--rl);color:var(--r);padding:2px 7px;border-radius:8px;font-weight:600">已禁用</span>`
+      : `<span style="font-size:11px;background:var(--gl);color:var(--g);padding:2px 7px;border-radius:8px;font-weight:600">已启用</span>`;
+    const toggleLabel = s.disabled ? '启用' : '禁用';
+    return `
+      <div class="staff-item" style="${s.disabled?'opacity:.6':''}">
+        <div class="staff-avatar">${s.name.slice(0,1)}</div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-width:0">
+          <div style="font-size:15px;font-weight:600">${s.name}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">${roleBadge}${statusBadge}</div>
+        </div>
+        <div class="staff-acts" style="flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-ghost btn-xs" onclick="openStaffForm('${safeName}')">编辑</button>
+          <button class="btn btn-ghost btn-xs" onclick="toggleStaffDisabled('${safeName}')">${toggleLabel}</button>
+          <button class="btn btn-xs" style="background:var(--rl);color:var(--r)"
+            onclick="deleteStaff('${safeName}')">删除</button>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 function openStaffForm(name){
-  const s = name ? staffList.find(x=>x.name===name) : null;
-  document.getElementById('sf-title').textContent = s ? '修改密码' : '添加员工';
+  const raw = name ? staffList.find(x=>x.name===name) : null;
+  const s = raw ? normalizeStaff(raw) : null;
+  document.getElementById('sf-title').textContent = s ? '编辑用户' : '添加用户';
   document.getElementById('sf-name').value = s ? s.name : '';
   document.getElementById('sf-name').disabled = !!s;  // 编辑时不允许改名
   document.getElementById('sf-pwd').value = '';
+  document.getElementById('sf-pwd').placeholder = s ? '留空则保持原密码不变' : '默认 1234';
+  document.getElementById('sf-role').value = s ? s.role : 'staff';
+  document.getElementById('sf-enabled').checked = s ? !s.disabled : true;
   document.getElementById('sf-orig-name').value = s ? s.name : '';
   openModal('modal-staff');
 }
@@ -2205,43 +2275,88 @@ function openStaffForm(name){
 function saveStaffForm(){
   const name    = (document.getElementById('sf-name').value||'').trim();
   const pwd     = (document.getElementById('sf-pwd').value||'').trim();
+  const role    = document.getElementById('sf-role').value || 'staff';
+  const enabled = document.getElementById('sf-enabled').checked;
   const origName= document.getElementById('sf-orig-name').value;
-  if(!name){ toast('请输入员工姓名'); return; }
-  if(!pwd)  { toast('请输入密码'); return; }
+  if(!name){ toast('请输入用户姓名'); return; }
+  if(name.toLowerCase()==='admin' && !origName){ toast('「admin」为系统保留账号，请改用其他姓名'); return; }
   if(origName){
-    // 修改密码
+    // 编辑：可改密码/角色/启用
     const idx = staffList.findIndex(s=>s.name===origName);
-    if(idx>=0) staffList[idx].pwd = pwd;
-    toast(`✓ ${name} 密码已修改`);
+    if(idx<0){ toast('用户不存在'); return; }
+    const cur = normalizeStaff(staffList[idx]);
+    staffList[idx] = {
+      name: cur.name,
+      pwd:  pwd || cur.pwd,
+      role,
+      disabled: !enabled,
+    };
+    toast(`✓ ${name} 已更新`);
   } else {
     // 新增
+    if(!pwd){ toast('请输入密码'); return; }
     if(staffList.find(s=>s.name===name)){ toast('该姓名已存在'); return; }
-    staffList.push({name, pwd});
-    toast(`✓ 员工 ${name} 已添加`);
+    staffList.push({name, pwd, role, disabled: !enabled});
+    toast(`✓ 用户 ${name} 已添加`);
   }
   saveStaff();
   closeModal('modal-staff');
   renderStaffAdmin();
 }
 
+function toggleStaffDisabled(name){
+  const idx = staffList.findIndex(s=>s.name===name);
+  if(idx<0) return;
+  const cur = normalizeStaff(staffList[idx]);
+  staffList[idx] = {...cur, disabled: !cur.disabled};
+  saveStaff();
+  renderStaffAdmin();
+  toast(staffList[idx].disabled ? `已禁用 ${name}` : `已启用 ${name}`);
+}
+
 function deleteStaff(name){
-  openConfirm('删除员工',`确认删除员工「${name}」？该员工将无法再登录。`,()=>{
+  openConfirm('删除用户',`确认删除用户「${name}」？该用户将无法再登录。`,()=>{
     staffList = staffList.filter(s=>s.name!==name);
     saveStaff();
     renderStaffAdmin();
-    toast(`已删除员工 ${name}`);
+    toast(`已删除用户 ${name}`);
   });
 }
 
+// ── 管理员密码（admin 账号专用，独立存储） ──
+function getAdminPwd(){
+  return localStorage.getItem('cfr_admin_pwd') || 'admin888';
+}
+function setAdminPwd(pwd){
+  localStorage.setItem('cfr_admin_pwd', pwd);
+}
+function openAdminPwdForm(){
+  document.getElementById('ap-old').value='';
+  document.getElementById('ap-new').value='';
+  document.getElementById('ap-new2').value='';
+  openModal('modal-admin-pwd');
+}
+function saveAdminPwd(){
+  const oldP = (document.getElementById('ap-old').value||'').trim();
+  const newP = (document.getElementById('ap-new').value||'').trim();
+  const new2 = (document.getElementById('ap-new2').value||'').trim();
+  if(oldP !== getAdminPwd()){ toast('原密码错误'); return; }
+  if(newP.length < 4){ toast('新密码至少 4 位'); return; }
+  if(newP !== new2){ toast('两次输入的新密码不一致'); return; }
+  setAdminPwd(newP);
+  closeModal('modal-admin-pwd');
+  toast('✓ 管理员密码已更新');
+}
+
 // ═══════════════════════════════════════════════════════
-// ROOM SETTINGS
+// ROOM SETTINGS  (简化版：只支持批量生成 + 单间删除)
 // ═══════════════════════════════════════════════════════
 function renderRoomSettings(){
   const list = document.getElementById('room-cfg-list');
   if(!ROOM_DEFS.length){
-    list.innerHTML=`<div class="rooms-empty">
+    list.innerHTML=`<div class="rooms-empty" style="text-align:center;padding:36px 16px;color:var(--g400)">
       <div style="font-size:40px;margin-bottom:10px">🏠</div>
-      <div>暂无房间，请批量添加或手动添加单间</div>
+      <div>暂无房间，请在上方填写起始号与房间数生成</div>
     </div>`;
     return;
   }
@@ -2251,7 +2366,6 @@ function renderRoomSettings(){
       <div class="room-cfg-num">${r.num}</div>
       <div class="room-cfg-type"></div>
       <div class="room-cfg-acts">
-        <button class="btn btn-ghost btn-xs" onclick="openRoomForm('${r.num}')">编辑</button>
         <button class="btn btn-xs" style="background:var(--rl);color:var(--r)"
           onclick="deleteRoom('${r.num}')">删除</button>
       </div>
@@ -2261,46 +2375,6 @@ function renderRoomSettings(){
     共 ${ROOM_DEFS.length} 间客房
   </div>`;
   list.innerHTML=html;
-}
-
-function openRoomForm(num){
-  const r = num ? ROOM_DEFS.find(x=>x.num===num) : null;
-  document.getElementById('rf-title').textContent = r ? '编辑房间号' : '添加单间';
-  document.getElementById('rf-num').value  = r ? r.num  : '';
-  document.getElementById('rf-orig-num').value = r ? r.num : '';
-  openModal('modal-room');
-}
-
-function saveRoom(){
-  const num     = (document.getElementById('rf-num').value||'').trim();
-  const origNum = document.getElementById('rf-orig-num').value;
-  if(!num){ toast('请输入房间号'); return; }
-  // Check duplicate (allow same num when editing same room)
-  const dup = ROOM_DEFS.find(r=>r.num===num && r.num!==origNum);
-  if(dup){ toast(`${num} 号房已存在`); return; }
-  if(origNum){
-    // Edit
-    const idx = ROOM_DEFS.findIndex(r=>r.num===origNum);
-    if(idx>=0){
-      ROOM_DEFS[idx] = {num};
-      // Update roomData key if number changed
-      if(num !== origNum && roomData[origNum]){
-        roomData[num] = roomData[origNum];
-        delete roomData[origNum];
-        saveRooms();
-      }
-    }
-  } else {
-    // Add — insert sorted by number
-    ROOM_DEFS.push({num});
-    ROOM_DEFS.sort((a,b)=>a.num.localeCompare(b.num, undefined, {numeric:true}));
-    roomData[num] = {status:'pending'};
-    saveRooms();
-  }
-  saveRoomDefs();
-  closeModal('modal-room');
-  renderRoomSettings();
-  toast(`✓ ${num}号房 已${origNum?'更新':'添加'}`);
 }
 
 function deleteRoom(num){
@@ -2313,37 +2387,32 @@ function deleteRoom(num){
   });
 }
 
+function _doGenerateRooms(start, count){
+  ROOM_DEFS = [];
+  roomData  = {};
+  for(let i=0;i<count;i++){
+    const num = String(start + i);
+    ROOM_DEFS.push({num});
+    roomData[num] = {status:'pending'};
+  }
+  saveRoomDefs(); saveRooms();
+  renderRoomSettings();
+  const last = start + count - 1;
+  toast(`✓ 已生成 ${count} 间（${start}~${last}）`);
+}
+
 function batchAddRooms(){
   const start = parseInt(document.getElementById('batch-start').value)||0;
   const count = parseInt(document.getElementById('batch-count').value)||1;
   if(!start){ toast('请输入起始房间号'); return; }
   if(count<1||count>99){ toast('房间数请填 1~99'); return; }
-  let added=0;
-  for(let i=0;i<count;i++){
-    const num = String(start + i);
-    if(!ROOM_DEFS.find(r=>r.num===num)){
-      ROOM_DEFS.push({num});
-      roomData[num]={status:'pending'};
-      added++;
-    }
+  if(ROOM_DEFS.length>0){
+    openConfirm('替换全部房间',
+      `当前共有 ${ROOM_DEFS.length} 间客房，将被替换为新生成的 ${count} 间（${start}~${start+count-1}）。今日查房数据也会一并清空，确认继续？`,
+      ()=> _doGenerateRooms(start, count));
+  } else {
+    _doGenerateRooms(start, count);
   }
-  ROOM_DEFS.sort((a,b)=>a.num.localeCompare(b.num, undefined, {numeric:true}));
-  saveRoomDefs(); saveRooms();
-  renderRoomSettings();
-  const last = start+count-1;
-  toast(added>0?`✓ 已添加 ${added} 间（${start}~${last}）`:`所有房间号已存在`);
-}
-
-function resetRoomsToDefault(){
-  openConfirm('恢复默认配置',
-    '将清空现有房间列表并恢复为默认的 12 间客房配置。今日查房数据也会一并清空，确认继续？',()=>{
-    ROOM_DEFS = JSON.parse(JSON.stringify(DEFAULT_ROOM_DEFS));
-    roomData  = {};
-    ROOM_DEFS.forEach(r=>{ roomData[r.num]={status:'pending'}; });
-    saveRoomDefs(); saveRooms();
-    renderRoomSettings();
-    toast('已恢复默认配置');
-  });
 }
 
 // ═══════════════════════════════════════════════════════

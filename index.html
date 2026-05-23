@@ -425,6 +425,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
 .rooms-batch-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end}
 .rooms-empty{text-align:center;padding:40px 24px;color:var(--g400)}
 
+/* ══ Staff Management ══ */
+.staff-item{background:#fff;border-radius:var(--rad);box-shadow:var(--sh);
+  padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.staff-avatar{width:38px;height:38px;border-radius:50%;background:var(--pl);
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  color:var(--p);font-weight:700;flex-shrink:0}
+.staff-name{font-size:15px;font-weight:600;flex:1}
+.staff-acts{display:flex;gap:6px}
+
 /* Scan FAB group */
 .fab-group{position:fixed;bottom:80px;right:calc(50% - 220px);z-index:98;
   display:flex;flex-direction:column;gap:10px;align-items:flex-end}
@@ -541,6 +550,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
     <button class="atab" onclick="switchAdminTab('restock')">补货报告</button>
     <button class="atab" onclick="switchAdminTab('stats')">消费统计</button>
     <button class="atab" onclick="switchAdminTab('rooms')">🏠 房间设置</button>
+    <button class="atab" onclick="switchAdminTab('staff')">👥 员工管理</button>
   </div>
   <div class="scr-body" style="padding-bottom:20px">
     <!-- Products -->
@@ -562,25 +572,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
     <div id="atab-stats" class="atab-body">
       <div id="stats-content"></div>
     </div>
+    <!-- Staff -->
+    <div id="atab-staff" class="atab-body">
+      <div style="background:var(--pl);border-radius:var(--rad);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--pd)">
+        👥 管理员工账号，员工用姓名+密码登录。若列表为空，员工可用任意姓名+密码 <b>1234</b> 登录。
+      </div>
+      <div id="staff-list"></div>
+      <div style="margin-top:12px;text-align:center">
+        <button class="btn btn-primary btn-sm" onclick="openStaffForm(null)">＋ 添加员工</button>
+      </div>
+    </div>
     <!-- Rooms -->
     <div id="atab-rooms" class="atab-body">
       <!-- Batch add -->
       <div class="rooms-batch">
-        <div class="rooms-batch-title">🏗️ 按楼层批量添加</div>
-        <div class="rooms-batch-row">
+        <div class="rooms-batch-title">🏗️ 批量添加房间</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
           <div>
-            <div style="font-size:11px;color:var(--pu);margin-bottom:4px">楼层</div>
-            <input class="form-input" id="batch-floor" type="number" min="1" max="99"
-              placeholder="如 1" style="padding:9px 10px;font-size:15px">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--pu);margin-bottom:4px">起始号</div>
-            <input class="form-input" id="batch-start" type="number" min="1" max="99"
-              value="1" style="padding:9px 10px;font-size:15px">
+            <div style="font-size:11px;color:var(--pu);margin-bottom:4px">起始房间号</div>
+            <input class="form-input" id="batch-start" type="number" min="1"
+              placeholder="如 101" style="padding:9px 10px;font-size:15px">
           </div>
           <div>
             <div style="font-size:11px;color:var(--pu);margin-bottom:4px">房间数</div>
-            <input class="form-input" id="batch-count" type="number" min="1" max="50"
+            <input class="form-input" id="batch-count" type="number" min="1" max="99"
               value="5" style="padding:9px 10px;font-size:15px">
           </div>
           <div>
@@ -588,17 +603,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
             <button class="btn btn-primary btn-sm" onclick="batchAddRooms()" style="height:40px">添加</button>
           </div>
         </div>
-        <div style="margin-top:8px">
-          <div style="font-size:11px;color:var(--pu);margin-bottom:4px">默认房型</div>
-          <select class="form-select form-input" id="batch-type"
-            style="padding:9px 10px;font-size:13px">
-            <option>大床房</option>
-            <option>标准双床</option>
-            <option>标准单间</option>
-            <option>豪华套房</option>
-            <option>商务套房</option>
-            <option>经济房</option>
-          </select>
+        <div style="font-size:12px;color:var(--pu);margin-top:8px;opacity:.75">
+          例：起始号 101，房间数 5 → 生成 101、102、103、104、105
         </div>
       </div>
       <!-- Add single room button -->
@@ -681,29 +687,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
   <div class="drawer">
     <div class="drawer-handle"></div>
     <div class="drawer-title" id="rf-title">添加房间</div>
-    <div class="form-row-2">
-      <div class="form-row" style="margin-bottom:0">
-        <label class="form-lbl">房间号 <span style="color:var(--r)">*</span></label>
-        <input class="form-input" id="rf-num" placeholder="如 101、201A" maxlength="8">
-      </div>
-      <div class="form-row" style="margin-bottom:0">
-        <label class="form-lbl">房型 <span style="color:var(--r)">*</span></label>
-        <select class="form-select form-input" id="rf-type">
-          <option>大床房</option>
-          <option>标准双床</option>
-          <option>标准单间</option>
-          <option>豪华套房</option>
-          <option>商务套房</option>
-          <option>经济房</option>
-          <option>亲子房</option>
-          <option>家庭套房</option>
-        </select>
-      </div>
+    <div class="form-row">
+      <label class="form-lbl">房间号 <span style="color:var(--r)">*</span></label>
+      <input class="form-input" id="rf-num" placeholder="如 101、202" maxlength="8">
     </div>
     <input type="hidden" id="rf-orig-num">
     <div class="drawer-btns">
       <button class="btn btn-ghost" onclick="closeModal('modal-room')">取消</button>
       <button class="btn btn-primary" onclick="saveRoom()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ STAFF FORM DRAWER ═══════════════════════ -->
+<div class="overlay modal-sm" id="modal-staff">
+  <div class="drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title" id="sf-title">添加员工</div>
+    <div class="form-row">
+      <label class="form-lbl">员工姓名 <span style="color:var(--r)">*</span></label>
+      <input class="form-input" id="sf-name" placeholder="如：小王、张三">
+    </div>
+    <div class="form-row">
+      <label class="form-lbl">登录密码 <span style="color:var(--r)">*</span></label>
+      <input class="form-input" id="sf-pwd" type="password" placeholder="默认 1234">
+    </div>
+    <input type="hidden" id="sf-orig-name">
+    <div class="drawer-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-staff')">取消</button>
+      <button class="btn btn-primary" onclick="saveStaffForm()">保存</button>
     </div>
   </div>
 </div>
@@ -929,10 +941,10 @@ const DEFAULT_PRODUCTS = [
 const DEFAULT_STOCK = {p1:80,p2:40,p3:30,p4:20,p5:30,p6:30,p7:20,p8:20};
 
 const DEFAULT_ROOM_DEFS = [
-  {num:'101',type:'标准单间'},{num:'102',type:'标准双床'},{num:'103',type:'大床房'},
-  {num:'201',type:'大床房'  },{num:'202',type:'标准单间'},{num:'203',type:'豪华套房'},
-  {num:'204',type:'标准双床'},{num:'301',type:'大床房'  },{num:'302',type:'大床房'},
-  {num:'303',type:'商务套房'},{num:'304',type:'标准单间'},{num:'401',type:'豪华套房'},
+  {num:'101'},{num:'102'},{num:'103'},
+  {num:'201'},{num:'202'},{num:'203'},{num:'204'},
+  {num:'301'},{num:'302'},{num:'303'},{num:'304'},
+  {num:'401'},
 ];
 let ROOM_DEFS = JSON.parse(JSON.stringify(DEFAULT_ROOM_DEFS));
 
@@ -966,6 +978,7 @@ let loginRole = 'staff';
 let products = [];   // [{id,name,cat,price,unit,icon,parLevel}]
 let stockData = {};  // { productId: totalQty }
 let consumed  = {};  // today: { productId: totalConsumed }
+let staffList = [];  // [{name, pwd}] 员工账号列表
 
 function todayKey(){ return new Date().toISOString().slice(0,10); }
 
@@ -983,6 +996,8 @@ function loadAll(){
     stockData = sd ? JSON.parse(sd) : Object.assign({},DEFAULT_STOCK);
     const co = localStorage.getItem('cfr_consumed_'+todayKey());
     consumed = co ? JSON.parse(co) : {};
+    const sl = localStorage.getItem('cfr_staff');
+    staffList = sl ? JSON.parse(sl) : [];
     const usr = localStorage.getItem('cfr_user');
     if(usr){ const u=JSON.parse(usr); currentUser=u.name; currentRole=u.role; }
   } catch(e){}
@@ -1002,6 +1017,10 @@ function saveAdmin(){
   localStorage.setItem('cfr_stock', JSON.stringify(stockData));
   localStorage.setItem('cfr_consumed_'+todayKey(), JSON.stringify(consumed));
   if(db) fsSyncAdmin().catch(()=>{});
+}
+function saveStaff(){
+  localStorage.setItem('cfr_staff', JSON.stringify(staffList));
+  if(db) fsSyncStaff().catch(()=>{});
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1032,8 +1051,16 @@ function doLogin(){
   const pwd =(document.getElementById('l-pwd').value||'').trim();
   if(!name){ toast('请输入姓名'); return; }
   if(!pwd) { toast('请输入密码'); return; }
-  if(loginRole==='admin' && pwd!=='admin888'){
-    toast('管理员密码错误'); return;
+  if(loginRole==='admin'){
+    if(pwd!=='admin888'){ toast('管理员密码错误'); return; }
+  } else {
+    if(staffList.length>0){
+      const found=staffList.find(s=>s.name===name);
+      if(!found){ toast('员工不存在，请联系管理员添加'); return; }
+      if(found.pwd!==pwd){ toast('密码错误'); return; }
+    } else {
+      if(pwd!=='1234'){ toast('员工密码错误（默认 1234）'); return; }
+    }
   }
   currentUser=name; currentRole=loginRole;
   localStorage.setItem('cfr_user', JSON.stringify({name,role:loginRole}));
@@ -1081,7 +1108,6 @@ function renderDash(){
     return `<div class="rc s-${s}" onclick="openRoom('${r.num}')">
       ${iss>0?`<div class="rc-issues">${iss}</div>`:''}
       <div class="rc-num">${r.num}</div>
-      <div class="rc-type">${r.type}</div>
       <span class="badge b-${s}">${lbl}</span>
     </div>`;
   }).join('');
@@ -1149,7 +1175,6 @@ function buildInsForm(def){
     <div class="room-bar-num">${def.num}</div>
     <div class="room-bar-info">
       <div class="room-bar-name">${def.num}号房</div>
-      <div class="room-bar-type">${def.type}</div>
     </div>
     <span class="badge b-${(roomData[def.num]||{}).status||'pending'}">
       ${{pending:'待查',progress:'查房中',normal:'正常',abnormal:'异常'}[(roomData[def.num]||{}).status||'pending']}
@@ -1409,8 +1434,7 @@ function renderReport(){
       },0);
       html+=`<div class="rpt-card">
         <div class="rpt-ch">
-          <div class="rpt-cn" style="color:${d.status==='abnormal'?'var(--r)':'var(--g)'}">${r.num}</div>
-          <div class="rpt-ct">${r.type}</div>
+          <div class="rpt-cn" style="color:${d.status==='abnormal'?'var(--r)':'var(--g)'}">${r.num}号房</div>
           <span class="badge b-${d.status}">${d.status==='normal'?'正常':'异常'}</span>
         </div>
         <div class="rpt-cb">
@@ -1475,7 +1499,7 @@ function renderHistory(){
 // ═══════════════════════════════════════════════════════
 function switchAdminTab(tab){
   document.querySelectorAll('.atab').forEach((b,i)=>{
-    const tabs=['products','inventory','restock','stats','rooms'];
+    const tabs=['products','inventory','restock','stats','rooms','staff'];
     b.classList.toggle('on',tabs[i]===tab);
   });
   document.querySelectorAll('.atab-body').forEach(b=>b.classList.remove('on'));
@@ -1486,6 +1510,7 @@ function switchAdminTab(tab){
   if(tab==='restock')   renderRestock();
   if(tab==='stats')     renderStatsAdmin();
   if(tab==='rooms')     renderRoomSettings();
+  if(tab==='staff')     renderStaffAdmin();
 }
 
 // ── Products ──
@@ -1759,7 +1784,13 @@ function openConfirm(title,body,cb){
   document.getElementById('mc-ok').onclick=()=>{ closeModal('modal-confirm'); if(_cb) _cb(); };
   document.getElementById('modal-confirm').classList.add('open');
 }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  if(id==='modal-staff'){
+    const n=document.getElementById('sf-name');
+    if(n) n.disabled=false;
+  }
+}
 document.querySelectorAll('.overlay').forEach(o=>{
   o.addEventListener('click',function(e){ if(e.target===this) this.classList.remove('open'); });
 });
@@ -2137,6 +2168,72 @@ function saveApiKey(){
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 
 // ═══════════════════════════════════════════════════════
+// STAFF MANAGEMENT
+// ═══════════════════════════════════════════════════════
+function renderStaffAdmin(){
+  const list = document.getElementById('staff-list');
+  if(!staffList.length){
+    list.innerHTML=`<div class="empty" style="padding:32px 24px">
+      <div class="empty-icon">👥</div>
+      <div style="margin-bottom:6px">暂无员工账号</div>
+      <div style="font-size:12px">当前任意姓名 + 密码 1234 均可登录</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML=staffList.map(s=>`
+    <div class="staff-item">
+      <div class="staff-avatar">${s.name.slice(0,1)}</div>
+      <div class="staff-name">${s.name}</div>
+      <div class="staff-acts">
+        <button class="btn btn-ghost btn-xs" onclick="openStaffForm('${s.name.replace(/'/g,"\\'")}')" >改密码</button>
+        <button class="btn btn-xs" style="background:var(--rl);color:var(--r)"
+          onclick="deleteStaff('${s.name.replace(/'/g,"\\'")}')" >删除</button>
+      </div>
+    </div>`).join('');
+}
+
+function openStaffForm(name){
+  const s = name ? staffList.find(x=>x.name===name) : null;
+  document.getElementById('sf-title').textContent = s ? '修改密码' : '添加员工';
+  document.getElementById('sf-name').value = s ? s.name : '';
+  document.getElementById('sf-name').disabled = !!s;  // 编辑时不允许改名
+  document.getElementById('sf-pwd').value = '';
+  document.getElementById('sf-orig-name').value = s ? s.name : '';
+  openModal('modal-staff');
+}
+
+function saveStaffForm(){
+  const name    = (document.getElementById('sf-name').value||'').trim();
+  const pwd     = (document.getElementById('sf-pwd').value||'').trim();
+  const origName= document.getElementById('sf-orig-name').value;
+  if(!name){ toast('请输入员工姓名'); return; }
+  if(!pwd)  { toast('请输入密码'); return; }
+  if(origName){
+    // 修改密码
+    const idx = staffList.findIndex(s=>s.name===origName);
+    if(idx>=0) staffList[idx].pwd = pwd;
+    toast(`✓ ${name} 密码已修改`);
+  } else {
+    // 新增
+    if(staffList.find(s=>s.name===name)){ toast('该姓名已存在'); return; }
+    staffList.push({name, pwd});
+    toast(`✓ 员工 ${name} 已添加`);
+  }
+  saveStaff();
+  closeModal('modal-staff');
+  renderStaffAdmin();
+}
+
+function deleteStaff(name){
+  openConfirm('删除员工',`确认删除员工「${name}」？该员工将无法再登录。`,()=>{
+    staffList = staffList.filter(s=>s.name!==name);
+    saveStaff();
+    renderStaffAdmin();
+    toast(`已删除员工 ${name}`);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
 // ROOM SETTINGS
 // ═══════════════════════════════════════════════════════
 function renderRoomSettings(){
@@ -2144,31 +2241,21 @@ function renderRoomSettings(){
   if(!ROOM_DEFS.length){
     list.innerHTML=`<div class="rooms-empty">
       <div style="font-size:40px;margin-bottom:10px">🏠</div>
-      <div>暂无房间，请添加或使用批量导入</div>
+      <div>暂无房间，请批量添加或手动添加单间</div>
     </div>`;
     return;
   }
-  // Group by floor
-  const floors = {};
-  ROOM_DEFS.forEach(r=>{
-    const fl = r.num.replace(/[^0-9]/g,'').slice(0,-2)||r.num.slice(0,1)||'其他';
-    if(!floors[fl]) floors[fl]=[];
-    floors[fl].push(r);
-  });
   let html='';
-  Object.keys(floors).sort((a,b)=>a-b).forEach(fl=>{
-    html+=`<div class="sec-ttl" style="margin-top:8px">${fl}楼 · ${floors[fl].length} 间</div>`;
-    floors[fl].forEach(r=>{
-      html+=`<div class="room-cfg-item">
-        <div class="room-cfg-num">${r.num}</div>
-        <div class="room-cfg-type">${r.type}</div>
-        <div class="room-cfg-acts">
-          <button class="btn btn-ghost btn-xs" onclick="openRoomForm('${r.num}')">编辑</button>
-          <button class="btn btn-xs" style="background:var(--rl);color:var(--r)"
-            onclick="deleteRoom('${r.num}')">删除</button>
-        </div>
-      </div>`;
-    });
+  ROOM_DEFS.forEach(r=>{
+    html+=`<div class="room-cfg-item">
+      <div class="room-cfg-num">${r.num}</div>
+      <div class="room-cfg-type"></div>
+      <div class="room-cfg-acts">
+        <button class="btn btn-ghost btn-xs" onclick="openRoomForm('${r.num}')">编辑</button>
+        <button class="btn btn-xs" style="background:var(--rl);color:var(--r)"
+          onclick="deleteRoom('${r.num}')">删除</button>
+      </div>
+    </div>`;
   });
   html+=`<div style="text-align:center;font-size:12px;color:var(--g400);padding:10px 0">
     共 ${ROOM_DEFS.length} 间客房
@@ -2178,16 +2265,14 @@ function renderRoomSettings(){
 
 function openRoomForm(num){
   const r = num ? ROOM_DEFS.find(x=>x.num===num) : null;
-  document.getElementById('rf-title').textContent = r ? '编辑房间' : '添加单间';
+  document.getElementById('rf-title').textContent = r ? '编辑房间号' : '添加单间';
   document.getElementById('rf-num').value  = r ? r.num  : '';
-  document.getElementById('rf-type').value = r ? r.type : '大床房';
   document.getElementById('rf-orig-num').value = r ? r.num : '';
   openModal('modal-room');
 }
 
 function saveRoom(){
   const num     = (document.getElementById('rf-num').value||'').trim();
-  const type    = document.getElementById('rf-type').value;
   const origNum = document.getElementById('rf-orig-num').value;
   if(!num){ toast('请输入房间号'); return; }
   // Check duplicate (allow same num when editing same room)
@@ -2197,7 +2282,7 @@ function saveRoom(){
     // Edit
     const idx = ROOM_DEFS.findIndex(r=>r.num===origNum);
     if(idx>=0){
-      ROOM_DEFS[idx] = {num, type};
+      ROOM_DEFS[idx] = {num};
       // Update roomData key if number changed
       if(num !== origNum && roomData[origNum]){
         roomData[num] = roomData[origNum];
@@ -2207,7 +2292,7 @@ function saveRoom(){
     }
   } else {
     // Add — insert sorted by number
-    ROOM_DEFS.push({num, type});
+    ROOM_DEFS.push({num});
     ROOM_DEFS.sort((a,b)=>a.num.localeCompare(b.num, undefined, {numeric:true}));
     roomData[num] = {status:'pending'};
     saveRooms();
@@ -2229,17 +2314,15 @@ function deleteRoom(num){
 }
 
 function batchAddRooms(){
-  const fl    = parseInt(document.getElementById('batch-floor').value)||0;
-  const start = parseInt(document.getElementById('batch-start').value)||1;
+  const start = parseInt(document.getElementById('batch-start').value)||0;
   const count = parseInt(document.getElementById('batch-count').value)||1;
-  const type  = document.getElementById('batch-type').value;
-  if(!fl){ toast('请输入楼层数字'); return; }
-  if(count<1||count>50){ toast('房间数请填 1~50'); return; }
+  if(!start){ toast('请输入起始房间号'); return; }
+  if(count<1||count>99){ toast('房间数请填 1~99'); return; }
   let added=0;
   for(let i=0;i<count;i++){
-    const num = String(fl*100 + start + i);
+    const num = String(start + i);
     if(!ROOM_DEFS.find(r=>r.num===num)){
-      ROOM_DEFS.push({num, type});
+      ROOM_DEFS.push({num});
       roomData[num]={status:'pending'};
       added++;
     }
@@ -2247,7 +2330,8 @@ function batchAddRooms(){
   ROOM_DEFS.sort((a,b)=>a.num.localeCompare(b.num, undefined, {numeric:true}));
   saveRoomDefs(); saveRooms();
   renderRoomSettings();
-  toast(added>0?`✓ 已添加 ${added} 间 (${fl}楼)`:`所有房间号已存在`);
+  const last = start+count-1;
+  toast(added>0?`✓ 已添加 ${added} 间（${start}~${last}）`:`所有房间号已存在`);
 }
 
 function resetRoomsToDefault(){
@@ -2272,6 +2356,7 @@ let _fsListener = null;
 const FSP = {
   rooms:    'hotel_config/rooms',
   products: 'hotel_config/products',
+  staff:    'hotel_config/staff',
   daily:    d => 'hotel_daily/' + d,
 };
 
@@ -2305,10 +2390,11 @@ async function fsLoadAll(){
   if(!db) return;
   setSyncDot('syncing');
   try{
-    const [rSnap, pSnap, dSnap] = await Promise.all([
+    const [rSnap, pSnap, dSnap, sSnap] = await Promise.all([
       db.doc(FSP.rooms).get(),
       db.doc(FSP.products).get(),
       db.doc(FSP.daily(todayKey())).get(),
+      db.doc(FSP.staff).get(),
     ]);
     if(rSnap.exists){ const d=rSnap.data(); if(Array.isArray(d.defs)&&d.defs.length) ROOM_DEFS=d.defs; }
     if(pSnap.exists){
@@ -2316,6 +2402,7 @@ async function fsLoadAll(){
       if(Array.isArray(d.items)&&d.items.length) products=d.items;
       if(d.stock) stockData=d.stock;
     }
+    if(sSnap.exists){ const d=sSnap.data(); if(Array.isArray(d.list)) staffList=d.list; }
     if(dSnap.exists){
       const d=dSnap.data();
       // Merge: keep local photos, use cloud status/checks/inventory
@@ -2389,6 +2476,11 @@ async function fsSyncAdmin(){
 async function fsSyncRoomDefs(){
   if(!db) return;
   await db.doc(FSP.rooms).set({defs:ROOM_DEFS});
+}
+
+async function fsSyncStaff(){
+  if(!db) return;
+  await db.doc(FSP.staff).set({list:staffList});
 }
 
 // ── Firebase config UI ──

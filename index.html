@@ -223,10 +223,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
 
 /* Admin tabs */
 .atabs{display:flex;background:var(--g100);border-bottom:1px solid var(--g200);
-  position:sticky;top:57px;z-index:99}
-.atab{flex:1;padding:12px 6px;background:none;border:none;font-size:13px;
+  position:sticky;top:57px;z-index:99;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none}
+.atabs::-webkit-scrollbar{display:none}
+.atab{flex:0 0 auto;padding:12px 14px;background:none;border:none;font-size:13px;
   font-weight:600;color:var(--g500);cursor:pointer;border-bottom:2px solid transparent;
-  transition:all .15s}
+  transition:all .15s;white-space:nowrap}
 .atab.on{color:var(--pu);border-bottom-color:var(--pu)}
 .atab-body{display:none;padding:14px 16px 100px}
 .atab-body.on{display:block}
@@ -390,6 +392,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
 .api-tag.no{background:var(--rl);color:var(--r)}
 .api-tag.spin{background:var(--pl);color:var(--pd)}
 .api-source{font-size:11px;color:var(--g400);margin-top:4px}
+/* ══ Room Settings ══ */
+.room-cfg-item{background:#fff;border-radius:var(--rad);box-shadow:var(--sh);
+  padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.room-cfg-num{font-size:22px;font-weight:700;color:var(--p);min-width:46px}
+.room-cfg-type{flex:1;font-size:14px;color:var(--g700)}
+.room-cfg-acts{display:flex;gap:6px}
+.room-cfg-floor{font-size:11px;color:var(--g400);background:var(--g100);
+  padding:2px 8px;border-radius:8px;margin-left:4px}
+.rooms-batch{background:var(--pul);border-radius:var(--rad);padding:14px 16px;
+  margin-bottom:14px}
+.rooms-batch-title{font-size:13px;font-weight:700;color:var(--pu);margin-bottom:10px}
+.rooms-batch-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end}
+.rooms-empty{text-align:center;padding:40px 24px;color:var(--g400)}
+
 /* Scan FAB group */
 .fab-group{position:fixed;bottom:80px;right:calc(50% - 220px);z-index:98;
   display:flex;flex-direction:column;gap:10px;align-items:flex-end}
@@ -502,6 +518,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
     <button class="atab" onclick="switchAdminTab('inventory')">库存管理</button>
     <button class="atab" onclick="switchAdminTab('restock')">补货报告</button>
     <button class="atab" onclick="switchAdminTab('stats')">消费统计</button>
+    <button class="atab" onclick="switchAdminTab('rooms')">🏠 房间设置</button>
   </div>
   <div class="scr-body" style="padding-bottom:20px">
     <!-- Products -->
@@ -522,6 +539,57 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
     <!-- Stats -->
     <div id="atab-stats" class="atab-body">
       <div id="stats-content"></div>
+    </div>
+    <!-- Rooms -->
+    <div id="atab-rooms" class="atab-body">
+      <!-- Batch add -->
+      <div class="rooms-batch">
+        <div class="rooms-batch-title">🏗️ 按楼层批量添加</div>
+        <div class="rooms-batch-row">
+          <div>
+            <div style="font-size:11px;color:var(--pu);margin-bottom:4px">楼层</div>
+            <input class="form-input" id="batch-floor" type="number" min="1" max="99"
+              placeholder="如 1" style="padding:9px 10px;font-size:15px">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--pu);margin-bottom:4px">起始号</div>
+            <input class="form-input" id="batch-start" type="number" min="1" max="99"
+              value="1" style="padding:9px 10px;font-size:15px">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--pu);margin-bottom:4px">房间数</div>
+            <input class="form-input" id="batch-count" type="number" min="1" max="50"
+              value="5" style="padding:9px 10px;font-size:15px">
+          </div>
+          <div>
+            <div style="font-size:11px;color:transparent;margin-bottom:4px">-</div>
+            <button class="btn btn-primary btn-sm" onclick="batchAddRooms()" style="height:40px">添加</button>
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <div style="font-size:11px;color:var(--pu);margin-bottom:4px">默认房型</div>
+          <select class="form-select form-input" id="batch-type"
+            style="padding:9px 10px;font-size:13px">
+            <option>大床房</option>
+            <option>标准双床</option>
+            <option>标准单间</option>
+            <option>豪华套房</option>
+            <option>商务套房</option>
+            <option>经济房</option>
+          </select>
+        </div>
+      </div>
+      <!-- Add single room button -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:600;color:var(--g500)">房间列表</div>
+        <button class="btn btn-primary btn-sm" onclick="openRoomForm(null)">＋ 添加单间</button>
+      </div>
+      <!-- Reset to default -->
+      <div id="room-cfg-list"></div>
+      <div style="margin-top:12px;text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="resetRoomsToDefault()"
+          style="font-size:12px;color:var(--r);border-color:var(--rl)">↺ 恢复默认房间配置</button>
+      </div>
     </div>
   </div>
   <!-- FAB group for adding products -->
@@ -582,6 +650,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
     <div class="drawer-btns">
       <button class="btn btn-ghost" onclick="closeModal('modal-product')">取消</button>
       <button class="btn btn-primary" onclick="saveProduct()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ROOM FORM DRAWER ═══════════════════════ -->
+<div class="overlay modal-sm" id="modal-room">
+  <div class="drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title" id="rf-title">添加房间</div>
+    <div class="form-row-2">
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-lbl">房间号 <span style="color:var(--r)">*</span></label>
+        <input class="form-input" id="rf-num" placeholder="如 101、201A" maxlength="8">
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-lbl">房型 <span style="color:var(--r)">*</span></label>
+        <select class="form-select form-input" id="rf-type">
+          <option>大床房</option>
+          <option>标准双床</option>
+          <option>标准单间</option>
+          <option>豪华套房</option>
+          <option>商务套房</option>
+          <option>经济房</option>
+          <option>亲子房</option>
+          <option>家庭套房</option>
+        </select>
+      </div>
+    </div>
+    <input type="hidden" id="rf-orig-num">
+    <div class="drawer-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-room')">取消</button>
+      <button class="btn btn-primary" onclick="saveRoom()">保存</button>
     </div>
   </div>
 </div>
@@ -746,12 +846,13 @@ const DEFAULT_PRODUCTS = [
 
 const DEFAULT_STOCK = {p1:80,p2:40,p3:30,p4:20,p5:30,p6:30,p7:20,p8:20};
 
-const ROOM_DEFS = [
+const DEFAULT_ROOM_DEFS = [
   {num:'101',type:'标准单间'},{num:'102',type:'标准双床'},{num:'103',type:'大床房'},
   {num:'201',type:'大床房'  },{num:'202',type:'标准单间'},{num:'203',type:'豪华套房'},
   {num:'204',type:'标准双床'},{num:'301',type:'大床房'  },{num:'302',type:'大床房'},
   {num:'303',type:'商务套房'},{num:'304',type:'标准单间'},{num:'401',type:'豪华套房'},
 ];
+let ROOM_DEFS = JSON.parse(JSON.stringify(DEFAULT_ROOM_DEFS));
 
 const CHECK_SECTIONS = [
   {id:'appliances',title:'电器设备',icon:'🔌',items:[
@@ -788,6 +889,8 @@ function todayKey(){ return new Date().toISOString().slice(0,10); }
 
 function loadAll(){
   try {
+    const rm = localStorage.getItem('cfr_room_defs');
+    if(rm){ ROOM_DEFS = JSON.parse(rm); }
     const rd = localStorage.getItem('cfr_rooms_'+todayKey());
     roomData = rd ? JSON.parse(rd) : {};
     const hi = localStorage.getItem('cfr_history');
@@ -802,6 +905,9 @@ function loadAll(){
     if(usr){ const u=JSON.parse(usr); currentUser=u.name; currentRole=u.role; }
   } catch(e){}
   ROOM_DEFS.forEach(r=>{ if(!roomData[r.num]) roomData[r.num]={status:'pending'}; });
+}
+function saveRoomDefs(){
+  localStorage.setItem('cfr_room_defs', JSON.stringify(ROOM_DEFS));
 }
 
 function saveRooms(){ localStorage.setItem('cfr_rooms_'+todayKey(), JSON.stringify(roomData)); }
@@ -1282,7 +1388,7 @@ function renderHistory(){
 // ═══════════════════════════════════════════════════════
 function switchAdminTab(tab){
   document.querySelectorAll('.atab').forEach((b,i)=>{
-    const tabs=['products','inventory','restock','stats'];
+    const tabs=['products','inventory','restock','stats','rooms'];
     b.classList.toggle('on',tabs[i]===tab);
   });
   document.querySelectorAll('.atab-body').forEach(b=>b.classList.remove('on'));
@@ -1292,6 +1398,7 @@ function switchAdminTab(tab){
   if(tab==='inventory') renderInventoryAdmin();
   if(tab==='restock')   renderRestock();
   if(tab==='stats')     renderStatsAdmin();
+  if(tab==='rooms')     renderRoomSettings();
 }
 
 // ── Products ──
@@ -1941,6 +2048,132 @@ function saveApiKey(){
   toast(key?'✓ 3023data API Key 已保存':'已清除 API Key');
 }
 function openModal(id){ document.getElementById(id).classList.add('open'); }
+
+// ═══════════════════════════════════════════════════════
+// ROOM SETTINGS
+// ═══════════════════════════════════════════════════════
+function renderRoomSettings(){
+  const list = document.getElementById('room-cfg-list');
+  if(!ROOM_DEFS.length){
+    list.innerHTML=`<div class="rooms-empty">
+      <div style="font-size:40px;margin-bottom:10px">🏠</div>
+      <div>暂无房间，请添加或使用批量导入</div>
+    </div>`;
+    return;
+  }
+  // Group by floor
+  const floors = {};
+  ROOM_DEFS.forEach(r=>{
+    const fl = r.num.replace(/[^0-9]/g,'').slice(0,-2)||r.num.slice(0,1)||'其他';
+    if(!floors[fl]) floors[fl]=[];
+    floors[fl].push(r);
+  });
+  let html='';
+  Object.keys(floors).sort((a,b)=>a-b).forEach(fl=>{
+    html+=`<div class="sec-ttl" style="margin-top:8px">${fl}楼 · ${floors[fl].length} 间</div>`;
+    floors[fl].forEach(r=>{
+      html+=`<div class="room-cfg-item">
+        <div class="room-cfg-num">${r.num}</div>
+        <div class="room-cfg-type">${r.type}</div>
+        <div class="room-cfg-acts">
+          <button class="btn btn-ghost btn-xs" onclick="openRoomForm('${r.num}')">编辑</button>
+          <button class="btn btn-xs" style="background:var(--rl);color:var(--r)"
+            onclick="deleteRoom('${r.num}')">删除</button>
+        </div>
+      </div>`;
+    });
+  });
+  html+=`<div style="text-align:center;font-size:12px;color:var(--g400);padding:10px 0">
+    共 ${ROOM_DEFS.length} 间客房
+  </div>`;
+  list.innerHTML=html;
+}
+
+function openRoomForm(num){
+  const r = num ? ROOM_DEFS.find(x=>x.num===num) : null;
+  document.getElementById('rf-title').textContent = r ? '编辑房间' : '添加单间';
+  document.getElementById('rf-num').value  = r ? r.num  : '';
+  document.getElementById('rf-type').value = r ? r.type : '大床房';
+  document.getElementById('rf-orig-num').value = r ? r.num : '';
+  openModal('modal-room');
+}
+
+function saveRoom(){
+  const num     = (document.getElementById('rf-num').value||'').trim();
+  const type    = document.getElementById('rf-type').value;
+  const origNum = document.getElementById('rf-orig-num').value;
+  if(!num){ toast('请输入房间号'); return; }
+  // Check duplicate (allow same num when editing same room)
+  const dup = ROOM_DEFS.find(r=>r.num===num && r.num!==origNum);
+  if(dup){ toast(`${num} 号房已存在`); return; }
+  if(origNum){
+    // Edit
+    const idx = ROOM_DEFS.findIndex(r=>r.num===origNum);
+    if(idx>=0){
+      ROOM_DEFS[idx] = {num, type};
+      // Update roomData key if number changed
+      if(num !== origNum && roomData[origNum]){
+        roomData[num] = roomData[origNum];
+        delete roomData[origNum];
+        saveRooms();
+      }
+    }
+  } else {
+    // Add — insert sorted by number
+    ROOM_DEFS.push({num, type});
+    ROOM_DEFS.sort((a,b)=>a.num.localeCompare(b.num, undefined, {numeric:true}));
+    roomData[num] = {status:'pending'};
+    saveRooms();
+  }
+  saveRoomDefs();
+  closeModal('modal-room');
+  renderRoomSettings();
+  toast(`✓ ${num}号房 已${origNum?'更新':'添加'}`);
+}
+
+function deleteRoom(num){
+  openConfirm('删除房间',`确认删除 ${num} 号房？今日已有查房记录也会一并移除。`,()=>{
+    ROOM_DEFS = ROOM_DEFS.filter(r=>r.num!==num);
+    delete roomData[num];
+    saveRoomDefs(); saveRooms();
+    renderRoomSettings();
+    toast(`已删除 ${num} 号房`);
+  });
+}
+
+function batchAddRooms(){
+  const fl    = parseInt(document.getElementById('batch-floor').value)||0;
+  const start = parseInt(document.getElementById('batch-start').value)||1;
+  const count = parseInt(document.getElementById('batch-count').value)||1;
+  const type  = document.getElementById('batch-type').value;
+  if(!fl){ toast('请输入楼层数字'); return; }
+  if(count<1||count>50){ toast('房间数请填 1~50'); return; }
+  let added=0;
+  for(let i=0;i<count;i++){
+    const num = String(fl*100 + start + i);
+    if(!ROOM_DEFS.find(r=>r.num===num)){
+      ROOM_DEFS.push({num, type});
+      roomData[num]={status:'pending'};
+      added++;
+    }
+  }
+  ROOM_DEFS.sort((a,b)=>a.num.localeCompare(b.num, undefined, {numeric:true}));
+  saveRoomDefs(); saveRooms();
+  renderRoomSettings();
+  toast(added>0?`✓ 已添加 ${added} 间 (${fl}楼)`:`所有房间号已存在`);
+}
+
+function resetRoomsToDefault(){
+  openConfirm('恢复默认配置',
+    '将清空现有房间列表并恢复为默认的 12 间客房配置。今日查房数据也会一并清空，确认继续？',()=>{
+    ROOM_DEFS = JSON.parse(JSON.stringify(DEFAULT_ROOM_DEFS));
+    roomData  = {};
+    ROOM_DEFS.forEach(r=>{ roomData[r.num]={status:'pending'}; });
+    saveRoomDefs(); saveRooms();
+    renderRoomSettings();
+    toast('已恢复默认配置');
+  });
+}
 
 // ═══════════════════════════════════════════════════════
 // INIT

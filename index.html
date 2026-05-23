@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>查房助手</title>
+<style>
+:root{
+  --p:#2563eb;--pd:#1d4ed8;--pl:#dbeafe;
+  --g:#16a34a;--gl:#dcfce7;
+  --w:#d97706;--wl:#fef3c7;
+  --r:#dc2626;--rl:#fee2e2;
+  --o:#ea580c;--ol:#ffedd5;
+  --pu:#7c3aed;--pul:#ede9fe;
+  --g50:#f9fafb;--g100:#f3f4f6;--g200:#e5e7eb;--g300:#d1d5db;
+  --g400:#9ca3af;--g500:#6b7280;--g600:#4b5563;--g700:#374151;--g800:#1f2937;
+  --rad:12px;--sh:0 1px 3px rgba(0,0,0,.10),0 1px 2px rgba(0,0,0,.06);
+  --shl:0 10px 25px rgba(0,0,0,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;
+  background:var(--g100);color:var(--g800);min-height:100vh;max-width:480px;margin:0 auto}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+.scr-body{flex:1;overflow-y:auto}
+
+/* ── Topbar ── */
+.topbar{background:var(--p);color:#fff;padding:16px 16px 14px;display:flex;align-items:center;gap:10px;
+  position:sticky;top:0;z-index:100}
+.tb-back{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 4px;line-height:1}
+.tb-title{font-size:17px;font-weight:600;flex:1}
+.tb-act{background:none;border:none;color:#fff;font-size:13px;cursor:pointer;padding:4px 8px;
+  border:1px solid rgba(255,255,255,.4);border-radius:6px}
+
+/* ── Bottom Nav ── */
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;
+  background:#fff;border-top:1px solid var(--g200);display:grid;z-index:100}
+.bnav.cols3{grid-template-columns:repeat(3,1fr)}
+.bnav.cols4{grid-template-columns:repeat(4,1fr)}
+.nb{display:flex;flex-direction:column;align-items:center;padding:8px 0 14px;
+  background:none;border:none;cursor:pointer;color:var(--g400);font-size:10px;gap:2px;transition:color .15s}
+.nb .ni{font-size:20px}
+.nb.on{color:var(--p)}
+
+/* ── Cards / Sections ── */
+.card{background:#fff;border-radius:var(--rad);box-shadow:var(--sh);overflow:hidden;margin-bottom:12px}
+.card-hd{padding:12px 16px;background:var(--g50);border-bottom:1px solid var(--g100);
+  display:flex;align-items:center;gap:8px}
+.card-hd-icon{font-size:17px}
+.card-hd-title{font-size:14px;font-weight:600;color:var(--g700);flex:1}
+.card-hd-note{font-size:12px;color:var(--g400)}
+
+/* ── Buttons ── */
+.btn{border:none;border-radius:10px;padding:13px 18px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn:active{opacity:.82}
+.btn-primary{background:var(--p);color:#fff}
+.btn-success{background:var(--g);color:#fff}
+.btn-danger{background:var(--r);color:#fff}
+.btn-ghost{background:var(--g100);color:var(--g700);border:1.5px solid var(--g200)}
+.btn-warn{background:var(--w);color:#fff}
+.btn-sm{padding:6px 14px;font-size:13px;border-radius:8px}
+.btn-xs{padding:4px 10px;font-size:12px;border-radius:6px}
+
+/* ── Login ── */
+#sl{background:linear-gradient(145deg,#1d4ed8,#2563eb 50%,#3b82f6);
+  justify-content:center;align-items:center;padding:40px 32px}
+.l-logo{font-size:56px;margin-bottom:8px}
+.l-name{font-size:26px;font-weight:700;color:#fff;margin-bottom:4px}
+.l-sub{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:40px}
+.l-role{display:flex;gap:10px;margin-bottom:28px;width:100%}
+.role-btn{flex:1;padding:11px;border-radius:10px;border:2px solid rgba(255,255,255,.35);
+  background:rgba(255,255,255,.12);color:#fff;font-size:14px;font-weight:600;cursor:pointer;
+  transition:all .15s}
+.role-btn.sel{background:rgba(255,255,255,.3);border-color:rgba(255,255,255,.8)}
+.l-field{background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);border-radius:10px;
+  padding:14px 16px;color:#fff;font-size:15px;width:100%;margin-bottom:12px;outline:none}
+.l-field::placeholder{color:rgba(255,255,255,.55)}
+.l-field:focus{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.2)}
+.l-btn{width:100%;background:#fff;color:var(--pd);border:none;border-radius:10px;padding:15px;
+  font-size:16px;font-weight:700;cursor:pointer}
+
+/* ── Dashboard ── */
+.dash-hd{background:var(--p);padding:16px 16px 20px;color:#fff}
+.dash-hi{font-size:13px;opacity:.8;margin-bottom:2px}
+.dash-dt{font-size:17px;font-weight:600;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:rgba(255,255,255,.18);border-radius:10px;padding:10px 6px;text-align:center}
+.stat-n{font-size:22px;font-weight:700;line-height:1}
+.stat-l{font-size:11px;opacity:.8;margin-top:3px}
+.dash-bd{padding:14px 16px 90px}
+.sec-ttl{font-size:12px;font-weight:600;color:var(--g500);letter-spacing:.5px;
+  text-transform:uppercase;margin:4px 0 10px}
+
+/* Room grid */
+.room-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.rc{background:#fff;border-radius:var(--rad);padding:14px 10px 12px;text-align:center;
+  box-shadow:var(--sh);cursor:pointer;transition:transform .15s;position:relative;
+  overflow:hidden;border:2px solid transparent}
+.rc:active{transform:scale(.96)}
+.rc.s-pending{border-color:var(--g200)}
+.rc.s-normal{border-color:var(--g);background:var(--gl)}
+.rc.s-abnormal{border-color:var(--r);background:var(--rl)}
+.rc.s-progress{border-color:var(--p);background:var(--pl)}
+.rc-num{font-size:20px;font-weight:700;color:var(--g800)}
+.rc-type{font-size:11px;color:var(--g500);margin:2px 0 6px}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+.b-pending{background:var(--g200);color:var(--g600)}
+.b-progress{background:var(--pl);color:var(--pd)}
+.b-normal{background:var(--gl);color:var(--g)}
+.b-abnormal{background:var(--rl);color:var(--r)}
+.rc-issues{position:absolute;top:5px;right:5px;background:var(--r);color:#fff;
+  font-size:10px;font-weight:700;width:18px;height:18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center}
+.ab-row{background:#fff;border-radius:var(--rad);box-shadow:var(--sh);padding:12px 16px;
+  margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.ab-num{font-size:18px;font-weight:700;color:var(--r);min-width:36px}
+.ab-info{flex:1;font-size:13px;color:var(--g600)}
+.ab-arr{color:var(--g300);font-size:18px}
+
+/* ── Inspect ── */
+#sinspect{background:var(--g50)}
+.room-bar{background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:14px;
+  box-shadow:var(--sh);display:flex;align-items:center;gap:12px}
+.room-bar-num{font-size:28px;font-weight:700;color:var(--p)}
+.room-bar-info{flex:1}
+.room-bar-name{font-size:15px;font-weight:600}
+.room-bar-type{font-size:12px;color:var(--g500);margin-top:2px}
+
+/* Check items */
+.ci{padding:14px 16px;border-bottom:1px solid var(--g100);display:flex;align-items:flex-start;gap:12px}
+.ci:last-child{border-bottom:none}
+.ci-info{flex:1}
+.ci-name{font-size:14px;font-weight:500}
+.ci-desc{font-size:12px;color:var(--g500);margin-top:2px}
+.ci-tog{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.tog{font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;
+  border:1.5px solid var(--g300);background:none;cursor:pointer;color:var(--g600);transition:all .15s}
+.tog.t-ok{background:var(--g);border-color:var(--g);color:#fff}
+.tog.t-issue{background:var(--r);border-color:var(--r);color:#fff}
+.tog.t-na{background:var(--g400);border-color:var(--g400);color:#fff}
+
+/* ── Inventory table ── */
+.inv-table{width:100%;border-collapse:collapse;font-size:13px}
+.inv-table th{background:var(--g50);padding:8px 10px;font-size:11px;font-weight:600;
+  color:var(--g500);text-align:center;border-bottom:1px solid var(--g200)}
+.inv-table td{padding:10px 8px;border-bottom:1px solid var(--g100);text-align:center;vertical-align:middle}
+.inv-table tr:last-child td{border-bottom:none}
+.inv-table td.left{text-align:left;padding-left:14px}
+.inv-num-in{width:52px;border:1.5px solid var(--g200);border-radius:8px;
+  padding:6px;text-align:center;font-size:14px;font-weight:700;
+  color:var(--g800);background:var(--g50);outline:none}
+.inv-num-in:focus{border-color:var(--p);background:#fff}
+.inv-consumed{font-size:14px;font-weight:700}
+.inv-consumed.pos{color:var(--r)}
+.inv-consumed.zero{color:var(--g400)}
+.inv-price{font-size:13px;font-weight:600;color:var(--o)}
+.inv-footer{background:var(--g50);padding:12px 16px;display:flex;align-items:center;
+  justify-content:space-between;border-top:1px solid var(--g200)}
+.inv-total-lbl{font-size:13px;color:var(--g600)}
+.inv-total-val{font-size:18px;font-weight:700;color:var(--o)}
+
+/* ── Photos ── */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px}
+.ph-thumb{aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--g100);
+  position:relative;cursor:pointer}
+.ph-thumb img{width:100%;height:100%;object-fit:cover}
+.ph-del{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.5);color:#fff;
+  border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+.ph-add{aspect-ratio:1;border-radius:8px;background:var(--g100);border:2px dashed var(--g300);
+  cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;color:var(--g400);font-size:12px;transition:all .15s}
+.ph-add:active{background:var(--pl);border-color:var(--p)}
+.ph-add-icon{font-size:24px}
+
+/* Remark */
+.remark-wrap{padding:12px 16px}
+.remark-in{width:100%;border:1.5px solid var(--g200);border-radius:8px;padding:10px 12px;
+  font-size:14px;resize:none;font-family:inherit;color:var(--g800);background:var(--g50);
+  outline:none;min-height:72px;transition:border-color .15s}
+.remark-in:focus{border-color:var(--p);background:#fff}
+
+/* Submit bar */
+.sub-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;background:#fff;border-top:1px solid var(--g200);
+  padding:12px 16px 20px;z-index:100;display:flex;gap:10px}
+
+/* ── Report ── */
+.rpt-sum{background:var(--p);color:#fff;border-radius:var(--rad);padding:20px;
+  margin-bottom:14px;box-shadow:var(--shl)}
+.rpt-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.rpt-dt{font-size:12px;opacity:.75;margin-bottom:16px}
+.rpt-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rpt-ni{text-align:center}
+.rpt-nv{font-size:22px;font-weight:700}
+.rpt-nl{font-size:11px;opacity:.8;margin-top:2px}
+.rpt-card{background:#fff;border-radius:var(--rad);margin-bottom:10px;overflow:hidden;box-shadow:var(--sh)}
+.rpt-ch{padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--g100)}
+.rpt-cn{font-size:20px;font-weight:700}
+.rpt-ct{font-size:12px;color:var(--g500);flex:1}
+.rpt-cb{padding:12px 16px}
+.rpt-iss{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;color:var(--r)}
+.rpt-ok{font-size:12px;color:var(--g);padding:3px 0}
+.rpt-photos{display:flex;gap:6px;overflow-x:auto;padding-top:8px}
+.rpt-photo{width:58px;height:58px;border-radius:6px;object-fit:cover;flex-shrink:0}
+
+/* ── History ── */
+.hist-item{background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:10px;
+  box-shadow:var(--sh);cursor:pointer;display:flex;align-items:center;gap:12px}
+.hist-db{background:var(--pl);color:var(--pd);border-radius:8px;padding:8px 12px;
+  text-align:center;min-width:48px}
+.hist-day{font-size:22px;font-weight:700;line-height:1}
+.hist-mo{font-size:11px;margin-top:2px}
+.hist-info{flex:1}
+.hist-staff{font-size:14px;font-weight:600}
+.hist-detail{font-size:12px;color:var(--g500);margin-top:2px}
+
+/* ═══════════════ ADMIN STYLES ═══════════════ */
+.admin-hd{background:var(--pu);padding:16px 16px 14px;color:#fff;display:flex;align-items:center;gap:10px;
+  position:sticky;top:0;z-index:100}
+.admin-hd .tb-title{font-size:17px;font-weight:600;flex:1}
+
+/* Admin tabs */
+.atabs{display:flex;background:var(--g100);border-bottom:1px solid var(--g200);
+  position:sticky;top:57px;z-index:99}
+.atab{flex:1;padding:12px 6px;background:none;border:none;font-size:13px;
+  font-weight:600;color:var(--g500);cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .15s}
+.atab.on{color:var(--pu);border-bottom-color:var(--pu)}
+.atab-body{display:none;padding:14px 16px 100px}
+.atab-body.on{display:block}
+
+/* Product list */
+.prod-item{background:#fff;border-radius:var(--rad);box-shadow:var(--sh);
+  padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.prod-icon{font-size:28px;line-height:1}
+.prod-info{flex:1}
+.prod-name{font-size:15px;font-weight:600}
+.prod-meta{font-size:12px;color:var(--g500);margin-top:3px}
+.prod-price{font-size:16px;font-weight:700;color:var(--o);text-align:right}
+.prod-price-lbl{font-size:11px;color:var(--g400);text-align:right}
+.prod-acts{display:flex;gap:6px}
+.add-fab{position:fixed;bottom:80px;right:calc(50% - 220px);background:var(--pu);color:#fff;
+  border:none;border-radius:50%;width:52px;height:52px;font-size:24px;cursor:pointer;
+  box-shadow:var(--shl);z-index:98;display:flex;align-items:center;justify-content:center}
+
+/* Inventory admin */
+.inv-admin-row{background:#fff;border-radius:var(--rad);box-shadow:var(--sh);
+  padding:14px 16px;margin-bottom:10px}
+.inv-a-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.inv-a-icon{font-size:24px}
+.inv-a-name{font-size:15px;font-weight:600;flex:1}
+.inv-a-cat{font-size:12px;color:var(--g500);background:var(--g100);
+  padding:2px 8px;border-radius:10px}
+.inv-a-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.inv-a-field label{font-size:11px;color:var(--g500);display:block;margin-bottom:4px}
+.inv-a-field input{width:100%;border:1.5px solid var(--g200);border-radius:8px;
+  padding:8px 10px;font-size:15px;font-weight:700;text-align:center;
+  color:var(--g800);outline:none;font-family:inherit}
+.inv-a-field input:focus{border-color:var(--pu)}
+.stock-bar{height:6px;background:var(--g200);border-radius:3px;margin-top:10px;overflow:hidden}
+.stock-fill{height:100%;border-radius:3px;transition:width .4s}
+
+/* Restock report */
+.restock-sum{background:var(--o);color:#fff;border-radius:var(--rad);
+  padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px}
+.restock-sum-icon{font-size:36px}
+.restock-sum-info{}
+.restock-sum-title{font-size:16px;font-weight:700}
+.restock-sum-sub{font-size:12px;opacity:.8;margin-top:2px}
+.restock-item{background:#fff;border-radius:var(--rad);box-shadow:var(--sh);
+  padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.restock-icon{font-size:24px}
+.restock-info{flex:1}
+.restock-name{font-size:14px;font-weight:600}
+.restock-detail{font-size:12px;color:var(--g500);margin-top:2px}
+.restock-qty{text-align:right}
+.restock-qty-num{font-size:20px;font-weight:700;color:var(--r)}
+.restock-qty-lbl{font-size:11px;color:var(--g400)}
+.restock-ok{background:var(--gl);border-radius:var(--rad);padding:16px;
+  text-align:center;color:var(--g);font-weight:600;font-size:14px}
+
+/* Form */
+.form-row{margin-bottom:14px}
+.form-lbl{font-size:13px;font-weight:600;color:var(--g700);margin-bottom:6px;display:block}
+.form-input{width:100%;border:1.5px solid var(--g200);border-radius:10px;padding:12px 14px;
+  font-size:15px;color:var(--g800);outline:none;font-family:inherit;background:var(--g50);
+  transition:border-color .15s}
+.form-input:focus{border-color:var(--p);background:#fff}
+.form-select{width:100%;border:1.5px solid var(--g200);border-radius:10px;padding:12px 14px;
+  font-size:15px;color:var(--g800);outline:none;font-family:inherit;background:var(--g50);
+  appearance:none;-webkit-appearance:none}
+.form-hint{font-size:12px;color:var(--g400);margin-top:4px}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ── Modal / Drawer ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;
+  display:none;align-items:flex-end}
+.overlay.open{display:flex}
+.drawer{background:#fff;border-radius:20px 20px 0 0;width:100%;
+  padding:20px 20px 36px;max-height:88vh;overflow-y:auto}
+.drawer-handle{width:36px;height:4px;background:var(--g300);border-radius:2px;margin:0 auto 16px}
+.drawer-title{font-size:17px;font-weight:700;margin-bottom:16px}
+.drawer-btns{display:flex;gap:10px;margin-top:20px}
+.drawer-btns .btn{flex:1}
+.modal-sm .drawer{max-height:50vh}
+
+/* Toast */
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-10px);
+  background:var(--g800);color:#fff;padding:10px 20px;border-radius:20px;
+  font-size:13px;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Misc */
+.empty{text-align:center;padding:48px 24px;color:var(--g400)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px}
+.chip-warn{background:var(--wl);color:var(--w)}
+.chip-danger{background:var(--rl);color:var(--r)}
+.chip-ok{background:var(--gl);color:var(--g)}
+.divider{height:1px;background:var(--g100);margin:4px 0}
+
+/* ══ Barcode Scanner ══ */
+.scan-overlay{position:fixed;inset:0;background:#000;z-index:300;display:none;flex-direction:column}
+.scan-overlay.open{display:flex}
+.scan-topbar{padding:56px 16px 12px;display:flex;align-items:center;gap:12px;
+  background:linear-gradient(rgba(0,0,0,.7),transparent);
+  position:absolute;top:0;left:0;right:0;z-index:10;color:#fff}
+.scan-close{background:rgba(255,255,255,.18);border:none;color:#fff;width:38px;height:38px;
+  border-radius:50%;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.scan-title{font-size:17px;font-weight:600;flex:1}
+.scan-torch{background:rgba(255,255,255,.18);border:none;color:#fff;width:38px;height:38px;
+  border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.scan-viewport{flex:1;position:relative;overflow:hidden;background:#000}
+#scan-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scan-darken{position:absolute;inset:0;background:rgba(0,0,0,.45);
+  -webkit-mask:url(#scan-mask);mask:url(#scan-mask)}
+.scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-56%);
+  width:280px;height:170px;z-index:5}
+.sc{position:absolute;width:26px;height:26px;border-color:#fff;border-style:solid}
+.sc.tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:3px 0 0 0}
+.sc.tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 3px 0 0}
+.sc.bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 3px}
+.sc.br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 3px 0}
+.scan-line{position:absolute;left:2px;right:2px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--p),#60a5fa,var(--p),transparent);
+  box-shadow:0 0 10px rgba(37,99,235,.9);animation:scanline 2s ease-in-out infinite;top:10px}
+@keyframes scanline{0%,100%{top:10px;opacity:.8}50%{top:calc(100% - 10px);opacity:1}}
+.scan-bottom{position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(0,0,0,.85) 30%);
+  padding:48px 20px 36px;z-index:10}
+.scan-hint-txt{color:rgba(255,255,255,.8);font-size:13px;text-align:center;margin-bottom:16px}
+.scan-manual-row{display:flex;gap:8px}
+.scan-manual-in{flex:1;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.35);
+  border-radius:10px;padding:12px;color:#fff;font-size:15px;outline:none;
+  font-family:monospace;text-align:center;letter-spacing:2px}
+.scan-manual-in::placeholder{color:rgba(255,255,255,.4);font-family:inherit;letter-spacing:0;font-size:13px}
+.scan-manual-in:focus{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.2)}
+.scan-manual-btn{background:var(--p);border:none;color:#fff;border-radius:10px;
+  padding:12px 16px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.scan-status-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:20;text-align:center;pointer-events:none;display:none}
+.scan-status-banner.show{display:block}
+.scan-beep-ring{width:90px;height:90px;border-radius:50%;background:rgba(22,163,74,.9);
+  display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 10px;
+  animation:beep-ring .4s ease-out}
+@keyframes beep-ring{0%{transform:scale(.7);opacity:.5}100%{transform:scale(1);opacity:1}}
+.scan-beep-txt{color:#fff;font-size:15px;font-weight:600;
+  background:rgba(0,0,0,.7);padding:6px 16px;border-radius:20px}
+/* Product confirm drawer */
+.pcd-header{display:flex;gap:14px;align-items:flex-start;margin-bottom:18px}
+.pcd-img-wrap{position:relative;flex-shrink:0}
+.pcd-img{width:80px;height:80px;border-radius:12px;object-fit:cover;
+  background:var(--g100);border:2px solid var(--g200);display:block}
+.pcd-img-btn{position:absolute;bottom:-6px;right:-6px;background:var(--p);color:#fff;
+  border:none;border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:var(--sh)}
+.pcd-img-placeholder{width:80px;height:80px;border-radius:12px;background:var(--g100);
+  border:2px dashed var(--g300);cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;color:var(--g400);font-size:11px}
+.pcd-img-placeholder .pi{font-size:24px}
+.pcd-meta{flex:1;min-width:0}
+.barcode-tag{display:inline-flex;align-items:center;gap:5px;background:var(--g800);
+  color:rgba(255,255,255,.85);font-family:monospace;font-size:12px;
+  padding:3px 9px;border-radius:6px;margin-bottom:8px}
+.api-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;
+  padding:2px 8px;border-radius:10px;margin-left:6px}
+.api-tag.ok{background:var(--gl);color:var(--g)}
+.api-tag.no{background:var(--rl);color:var(--r)}
+.api-tag.spin{background:var(--pl);color:var(--pd)}
+.api-source{font-size:11px;color:var(--g400);margin-top:4px}
+/* Scan FAB group */
+.fab-group{position:fixed;bottom:80px;right:calc(50% - 220px);z-index:98;
+  display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.fab-main{background:var(--pu);color:#fff;border:none;border-radius:50%;
+  width:52px;height:52px;font-size:24px;cursor:pointer;box-shadow:var(--shl);
+  display:flex;align-items:center;justify-content:center}
+.fab-mini{background:#fff;color:var(--pu);border:2px solid var(--pu);border-radius:24px;
+  padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:var(--sh);
+  display:flex;align-items:center;gap:6px;white-space:nowrap;
+  transition:all .15s;opacity:0;pointer-events:none;transform:translateX(10px)}
+.fab-group.open .fab-mini{opacity:1;pointer-events:auto;transform:translateX(0)}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ LOGIN ═══════════════════════════════ -->
+<div id="sl" class="screen active">
+  <div class="l-logo">🏨</div>
+  <div class="l-name">查房助手</div>
+  <div class="l-sub">Hotel Room Inspection System</div>
+  <div class="l-role">
+    <button class="role-btn sel" id="role-staff" onclick="selRole('staff')">👷 员工</button>
+    <button class="role-btn" id="role-admin" onclick="selRole('admin')">⚙️ 管理员</button>
+  </div>
+  <div class="login-form" style="width:100%">
+    <input id="l-name" class="l-field" type="text" placeholder="姓名">
+    <input id="l-pwd"  class="l-field" type="password" placeholder="密码">
+    <button class="l-btn" onclick="doLogin()">登 录</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ DASHBOARD ═══════════════════════════════ -->
+<div id="sdash" class="screen">
+  <div class="dash-hd">
+    <div class="dash-hi" id="d-hi"></div>
+    <div class="dash-dt" id="d-dt"></div>
+    <div class="stats">
+      <div class="stat"><div class="stat-n" id="st-total">0</div><div class="stat-l">总房间</div></div>
+      <div class="stat"><div class="stat-n" id="st-pend">0</div><div class="stat-l">待查</div></div>
+      <div class="stat"><div class="stat-n" id="st-norm">0</div><div class="stat-l">正常</div></div>
+      <div class="stat"><div class="stat-n" id="st-abn">0</div><div class="stat-l">异常</div></div>
+    </div>
+  </div>
+  <div class="dash-bd scr-body">
+    <div class="sec-ttl">今日房间</div>
+    <div class="room-grid" id="room-grid"></div>
+    <div class="sec-ttl">异常房间</div>
+    <div id="ab-list"></div>
+  </div>
+  <div class="bnav cols3" id="dash-nav">
+    <button class="nb on" onclick="switchTab('dash')"><span class="ni">🏠</span>总览</button>
+    <button class="nb" onclick="switchTab('report')"><span class="ni">📋</span>今日报告</button>
+    <button class="nb" onclick="switchTab('history')"><span class="ni">🕐</span>历史</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ INSPECT ═══════════════════════════════ -->
+<div id="sinspect" class="screen">
+  <div class="topbar">
+    <button class="tb-back" onclick="goBack()">‹</button>
+    <div class="tb-title" id="ins-title">查房</div>
+    <button class="tb-act" onclick="tmpSave()">暂存</button>
+  </div>
+  <div class="scr-body" id="ins-body" style="padding:14px 16px 110px"></div>
+  <div class="sub-bar">
+    <button class="btn btn-danger" style="flex:1" onclick="doSubmit('abnormal')">⚠ 标记异常</button>
+    <button class="btn btn-success" style="flex:2" onclick="doSubmit('normal')">✓ 查房完成</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ REPORT ═══════════════════════════════ -->
+<div id="sreport" class="screen">
+  <div class="topbar">
+    <button class="tb-back" onclick="switchTab('dash')">‹</button>
+    <div class="tb-title">今日报告</div>
+    <button class="tb-act" onclick="shareReport()">发群</button>
+  </div>
+  <div class="scr-body" id="rpt-body" style="padding:14px 16px 90px"></div>
+  <div class="bnav cols3">
+    <button class="nb" onclick="switchTab('dash')"><span class="ni">🏠</span>总览</button>
+    <button class="nb on"><span class="ni">📋</span>今日报告</button>
+    <button class="nb" onclick="switchTab('history')"><span class="ni">🕐</span>历史</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ HISTORY ═══════════════════════════════ -->
+<div id="shistory" class="screen">
+  <div class="topbar">
+    <button class="tb-back" onclick="switchTab('dash')">‹</button>
+    <div class="tb-title">历史记录</div>
+  </div>
+  <div class="scr-body" id="hist-body" style="padding:14px 16px 90px"></div>
+  <div class="bnav cols3">
+    <button class="nb" onclick="switchTab('dash')"><span class="ni">🏠</span>总览</button>
+    <button class="nb" onclick="switchTab('report')"><span class="ni">📋</span>今日报告</button>
+    <button class="nb on"><span class="ni">🕐</span>历史</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ ADMIN ═══════════════════════════════ -->
+<div id="sadmin" class="screen">
+  <div class="admin-hd">
+    <button class="tb-back" onclick="adminLogout()">‹</button>
+    <div class="tb-title">管理后台</div>
+    <span style="font-size:13px;opacity:.8;margin-right:8px" id="adm-user"></span>
+    <button class="tb-act" onclick="openModal('modal-apikey');loadApiKeyField()">⚙️ API</button>
+  </div>
+  <div class="atabs">
+    <button class="atab on" onclick="switchAdminTab('products')">商品管理</button>
+    <button class="atab" onclick="switchAdminTab('inventory')">库存管理</button>
+    <button class="atab" onclick="switchAdminTab('restock')">补货报告</button>
+    <button class="atab" onclick="switchAdminTab('stats')">消费统计</button>
+  </div>
+  <div class="scr-body" style="padding-bottom:20px">
+    <!-- Products -->
+    <div id="atab-products" class="atab-body on">
+      <div id="prod-list"></div>
+    </div>
+    <!-- Inventory -->
+    <div id="atab-inventory" class="atab-body">
+      <div style="background:var(--pul);border-radius:var(--rad);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--pu)">
+        ⚙️ 设置每间客房的标准陈列数量（Par Level）及总仓库存量
+      </div>
+      <div id="inv-admin-list"></div>
+    </div>
+    <!-- Restock -->
+    <div id="atab-restock" class="atab-body">
+      <div id="restock-content"></div>
+    </div>
+    <!-- Stats -->
+    <div id="atab-stats" class="atab-body">
+      <div id="stats-content"></div>
+    </div>
+  </div>
+  <!-- FAB group for adding products -->
+  <div class="fab-group" id="fab-group">
+    <div class="fab-mini" id="fab-scan" onclick="openScan()">📷 扫码录入</div>
+    <div class="fab-mini" id="fab-manual" onclick="openProductForm(null);toggleFab()">✏️ 手动添加</div>
+    <button class="fab-main" id="prod-fab" onclick="toggleFab()">＋</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ OVERLAYS ═══════════════════════════════ -->
+<!-- Confirm modal -->
+<div class="overlay modal-sm" id="modal-confirm">
+  <div class="drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title" id="mc-title"></div>
+    <div style="font-size:14px;color:var(--g600);line-height:1.7" id="mc-body"></div>
+    <div class="drawer-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-confirm')">取消</button>
+      <button class="btn btn-primary" id="mc-ok">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product form drawer -->
+<div class="overlay" id="modal-product">
+  <div class="drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title" id="pf-title">添加商品</div>
+    <div class="form-row">
+      <label class="form-lbl">商品名称</label>
+      <input class="form-input" id="pf-name" placeholder="如：可乐、矿泉水">
+    </div>
+    <div class="form-row">
+      <label class="form-lbl">商品分类</label>
+      <select class="form-select form-input" id="pf-cat">
+        <option value="饮料">饮料</option>
+        <option value="零食">零食</option>
+        <option value="酒水">酒水</option>
+        <option value="其他">其他</option>
+      </select>
+    </div>
+    <div class="form-row-2">
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-lbl">售价（元）</label>
+        <input class="form-input" id="pf-price" type="number" min="0" step="0.5" placeholder="0.00">
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-lbl">单位</label>
+        <input class="form-input" id="pf-unit" placeholder="瓶/罐/包">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:14px">
+      <label class="form-lbl">商品 Emoji 图标</label>
+      <input class="form-input" id="pf-icon" placeholder="🥤" maxlength="4" style="font-size:24px;text-align:center">
+    </div>
+    <input type="hidden" id="pf-id">
+    <div class="drawer-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-product')">取消</button>
+      <button class="btn btn-primary" onclick="saveProduct()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ BARCODE SCANNER SCREEN ═══════════════════════ -->
+<div class="scan-overlay" id="scan-overlay">
+  <div class="scan-topbar">
+    <button class="scan-close" onclick="closeScan()">×</button>
+    <span class="scan-title">扫码录入商品</span>
+    <button class="scan-torch" id="torch-btn" onclick="toggleTorch()" title="手电筒">🔦</button>
+  </div>
+  <div class="scan-viewport">
+    <video id="scan-video" playsinline muted autoplay></video>
+    <!-- SVG mask to darken edges -->
+    <svg style="position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <mask id="scan-mask">
+          <rect width="100%" height="100%" fill="white"/>
+          <rect id="scan-hole" x="10%" y="35%" width="80%" height="30%" rx="4" fill="black"/>
+        </mask>
+      </defs>
+      <rect width="100%" height="100%" fill="rgba(0,0,0,0.5)" mask="url(#scan-mask)"/>
+    </svg>
+    <!-- Target frame -->
+    <div class="scan-frame">
+      <div class="sc tl"></div><div class="sc tr"></div>
+      <div class="sc bl"></div><div class="sc br"></div>
+      <div class="scan-line"></div>
+    </div>
+    <!-- Success animation -->
+    <div class="scan-status-banner" id="scan-banner">
+      <div class="scan-beep-ring">✓</div>
+      <div class="scan-beep-txt" id="scan-banner-txt">识别成功</div>
+    </div>
+  </div>
+  <div class="scan-bottom">
+    <div class="scan-hint-txt" id="scan-hint">将条码对准框内，自动识别</div>
+    <div class="scan-manual-row">
+      <input class="scan-manual-in" id="scan-manual-in" type="text" inputmode="numeric"
+        placeholder="或手动输入条码号码" maxlength="20">
+      <button class="scan-manual-btn" onclick="manualLookup()">查询</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ PRODUCT CONFIRM DRAWER ═══════════════════════ -->
+<div class="overlay" id="modal-scan-confirm">
+  <div class="drawer" style="max-height:92vh">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title">确认商品信息</div>
+    <!-- Header: image + barcode meta -->
+    <div class="pcd-header">
+      <div class="pcd-img-wrap" id="pcd-img-wrap">
+        <div class="pcd-img-placeholder" onclick="triggerProdPhoto()" id="pcd-img-ph">
+          <span class="pi">📷</span><span>拍商品照</span>
+        </div>
+      </div>
+      <div class="pcd-meta">
+        <div>
+          <span class="barcode-tag">▌▌▌ <span id="pcd-barcode">-</span></span>
+          <span class="api-tag spin" id="pcd-api-tag">查询中…</span>
+        </div>
+        <div class="api-source" id="pcd-api-source"></div>
+        <div style="font-size:12px;color:var(--g500);margin-top:6px" id="pcd-api-note"></div>
+      </div>
+    </div>
+    <!-- Editable fields -->
+    <div class="form-row">
+      <label class="form-lbl">商品名称 <span style="color:var(--r)">*</span></label>
+      <input class="form-input" id="pcd-name" placeholder="请输入商品名称">
+    </div>
+    <div class="form-row-2">
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-lbl">分类</label>
+        <select class="form-select form-input" id="pcd-cat">
+          <option value="饮料">饮料</option>
+          <option value="零食">零食</option>
+          <option value="酒水">酒水</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-lbl">Emoji 图标</label>
+        <input class="form-input" id="pcd-icon" maxlength="4" style="font-size:20px;text-align:center" placeholder="🥤">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:14px">
+      <label class="form-lbl">单位</label>
+      <input class="form-input" id="pcd-unit" placeholder="瓶 / 罐 / 包">
+    </div>
+    <div class="form-row-2" style="margin-top:4px">
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-lbl">售价（元）<span style="color:var(--r)">*</span></label>
+        <input class="form-input" id="pcd-price" type="number" min="0" step="0.5" placeholder="0.00">
+        <div class="form-hint">请按本店实际售价填写</div>
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-lbl">Par Level（间）</label>
+        <input class="form-input" id="pcd-par" type="number" min="1" value="1">
+        <div class="form-hint">每间标准备货量</div>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:14px">
+      <label class="form-lbl">当前仓库库存量</label>
+      <input class="form-input" id="pcd-stock" type="number" min="0" placeholder="0">
+    </div>
+    <!-- 3023 API key hint -->
+    <div style="background:var(--pul);border-radius:10px;padding:10px 14px;margin-top:4px;font-size:12px;color:var(--pu)">
+      💡 <b>条码数据库说明：</b>优先调用 Open Food Facts（免费、国际品牌准确率高）。
+      如需提高国产商品识别率，可在设置中配置
+      <a href="https://www.3023data.com/barcode/" target="_blank" style="color:var(--pu)">3023data</a> API Key（¥0.02/次）。
+    </div>
+    <input type="hidden" id="pcd-edit-id">
+    <div class="drawer-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-scan-confirm');closeScan()">取消</button>
+      <button class="btn btn-primary" onclick="saveScanProduct()">保存商品</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 3023 API KEY SETTINGS ═══════════════════════ -->
+<div class="overlay modal-sm" id="modal-apikey">
+  <div class="drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title">⚙️ 国产条码 API 设置</div>
+    <div style="font-size:13px;color:var(--g600);line-height:1.7;margin-bottom:14px">
+      <b>Open Food Facts</b>（已内置，无需配置）— 适合国际品牌，可口可乐、百事、农夫山泉等大品牌覆盖较好。<br><br>
+      <b>3023data</b>（可选）— 国内商品条码数据库，优先级更高，¥0.02/次。
+      <a href="https://www.3023data.com/barcode/" target="_blank" style="color:var(--p)">注册获取 API Key →</a>
+    </div>
+    <div class="form-row">
+      <label class="form-lbl">3023data API Key（可选）</label>
+      <input class="form-input" id="apikey-in" placeholder="留空则只使用 Open Food Facts" style="font-family:monospace;font-size:13px">
+    </div>
+    <div class="drawer-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-apikey')">取消</button>
+      <button class="btn btn-primary" onclick="saveApiKey()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+<!-- Photo inputs -->
+<input type="file" id="photo-in"     accept="image/*" capture="environment" style="display:none">
+<input type="file" id="prod-photo-in" accept="image/*" capture="environment" style="display:none">
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DEFAULT DATA
+// ═══════════════════════════════════════════════════════
+const DEFAULT_PRODUCTS = [
+  {id:'p1', name:'矿泉水',  cat:'饮料', price:5,  unit:'瓶', icon:'💧', parLevel:2},
+  {id:'p2', name:'可乐',    cat:'饮料', price:6,  unit:'罐', icon:'🥤', parLevel:1},
+  {id:'p3', name:'果汁',    cat:'饮料', price:8,  unit:'瓶', icon:'🧃', parLevel:1},
+  {id:'p4', name:'啤酒',    cat:'酒水', price:12, unit:'罐', icon:'🍺', parLevel:1},
+  {id:'p5', name:'薯片',    cat:'零食', price:10, unit:'包', icon:'🥔', parLevel:1},
+  {id:'p6', name:'饼干',    cat:'零食', price:8,  unit:'包', icon:'🍪', parLevel:1},
+  {id:'p7', name:'坚果',    cat:'零食', price:15, unit:'包', icon:'🥜', parLevel:1},
+  {id:'p8', name:'方便面',  cat:'零食', price:5,  unit:'包', icon:'🍜', parLevel:1},
+];
+
+const DEFAULT_STOCK = {p1:80,p2:40,p3:30,p4:20,p5:30,p6:30,p7:20,p8:20};
+
+const ROOM_DEFS = [
+  {num:'101',type:'标准单间'},{num:'102',type:'标准双床'},{num:'103',type:'大床房'},
+  {num:'201',type:'大床房'  },{num:'202',type:'标准单间'},{num:'203',type:'豪华套房'},
+  {num:'204',type:'标准双床'},{num:'301',type:'大床房'  },{num:'302',type:'大床房'},
+  {num:'303',type:'商务套房'},{num:'304',type:'标准单间'},{num:'401',type:'豪华套房'},
+];
+
+const CHECK_SECTIONS = [
+  {id:'appliances',title:'电器设备',icon:'🔌',items:[
+    {id:'tv',       name:'电视',         desc:'开机正常、遥控器可用、频道流畅'},
+    {id:'ac',       name:'空调',         desc:'制冷/制热正常、遥控可用、无异味'},
+    {id:'kettle',   name:'热水壶/热水器', desc:'通电加热正常、壶体洁净'},
+    {id:'computer', name:'电脑',         desc:'正常开机进入系统、网络连接正常'},
+    {id:'periph',   name:'电脑外设',     desc:'鼠标、键盘、音箱等完好可用'},
+  ]},
+  {id:'hygiene',title:'卫生检查',icon:'🧹',items:[
+    {id:'floor',    name:'地面',     desc:'无灰尘、毛发、污渍'},
+    {id:'bed',      name:'床铺床品', desc:'床单被罩洁净、枕套无污迹'},
+    {id:'bathroom', name:'卫生间',   desc:'马桶、洗手台、镜面、淋浴区洁净'},
+    {id:'furniture',name:'桌椅家具', desc:'表面无灰尘、摆放整齐'},
+    {id:'trash',    name:'垃圾桶',   desc:'已清空，垃圾袋完好'},
+    {id:'amenities',name:'一次性用品',desc:'毛巾洗漱用品齐全'},
+  ]},
+];
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let currentUser = '', currentRole = 'staff';
+let roomData = {};   // { roomNum: { status, checks, inventory, photos, remark, time, staff } }
+let history  = [];
+let loginRole = 'staff';
+
+// ADMIN STATE (persisted)
+let products = [];   // [{id,name,cat,price,unit,icon,parLevel}]
+let stockData = {};  // { productId: totalQty }
+let consumed  = {};  // today: { productId: totalConsumed }
+
+function todayKey(){ return new Date().toISOString().slice(0,10); }
+
+function loadAll(){
+  try {
+    const rd = localStorage.getItem('cfr_rooms_'+todayKey());
+    roomData = rd ? JSON.parse(rd) : {};
+    const hi = localStorage.getItem('cfr_history');
+    history = hi ? JSON.parse(hi) : [];
+    const pr = localStorage.getItem('cfr_products');
+    products = pr ? JSON.parse(pr) : JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+    const sd = localStorage.getItem('cfr_stock');
+    stockData = sd ? JSON.parse(sd) : Object.assign({},DEFAULT_STOCK);
+    const co = localStorage.getItem('cfr_consumed_'+todayKey());
+    consumed = co ? JSON.parse(co) : {};
+    const usr = localStorage.getItem('cfr_user');
+    if(usr){ const u=JSON.parse(usr); currentUser=u.name; currentRole=u.role; }
+  } catch(e){}
+  ROOM_DEFS.forEach(r=>{ if(!roomData[r.num]) roomData[r.num]={status:'pending'}; });
+}
+
+function saveRooms(){ localStorage.setItem('cfr_rooms_'+todayKey(), JSON.stringify(roomData)); }
+function saveAdmin(){
+  localStorage.setItem('cfr_products', JSON.stringify(products));
+  localStorage.setItem('cfr_stock', JSON.stringify(stockData));
+  localStorage.setItem('cfr_consumed_'+todayKey(), JSON.stringify(consumed));
+}
+
+// ═══════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function switchTab(tab){
+  show('s'+tab);
+  if(tab==='dash')    renderDash();
+  if(tab==='report')  renderReport();
+  if(tab==='history') renderHistory();
+}
+function goBack(){ switchTab('dash'); }
+
+// ═══════════════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════════════
+function selRole(r){
+  loginRole=r;
+  document.getElementById('role-staff').classList.toggle('sel',r==='staff');
+  document.getElementById('role-admin').classList.toggle('sel',r==='admin');
+}
+function doLogin(){
+  const name=(document.getElementById('l-name').value||'').trim();
+  const pwd =(document.getElementById('l-pwd').value||'').trim();
+  if(!name){ toast('请输入姓名'); return; }
+  if(!pwd) { toast('请输入密码'); return; }
+  if(loginRole==='admin' && pwd!=='admin888'){
+    toast('管理员密码错误'); return;
+  }
+  currentUser=name; currentRole=loginRole;
+  localStorage.setItem('cfr_user', JSON.stringify({name,role:loginRole}));
+  if(loginRole==='admin'){
+    document.getElementById('adm-user').textContent=name;
+    show('sadmin'); switchAdminTab('products');
+  } else {
+    renderDash(); show('sdash');
+  }
+}
+function adminLogout(){
+  localStorage.removeItem('cfr_user');
+  currentUser=''; currentRole='staff';
+  document.getElementById('l-name').value='';
+  document.getElementById('l-pwd').value='';
+  selRole('staff');
+  show('sl');
+}
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════
+function renderDash(){
+  const now=new Date();
+  document.getElementById('d-hi').textContent='你好，'+currentUser;
+  document.getElementById('d-dt').textContent=now.toLocaleDateString('zh-CN',
+    {year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  let pend=0,norm=0,abn=0;
+  ROOM_DEFS.forEach(r=>{
+    const s=(roomData[r.num]||{}).status||'pending';
+    if(s==='pending'||s==='progress') pend++;
+    else if(s==='normal') norm++;
+    else if(s==='abnormal') abn++;
+  });
+  document.getElementById('st-total').textContent=ROOM_DEFS.length;
+  document.getElementById('st-pend').textContent=pend;
+  document.getElementById('st-norm').textContent=norm;
+  document.getElementById('st-abn').textContent=abn;
+  // grid
+  const grid=document.getElementById('room-grid');
+  grid.innerHTML=ROOM_DEFS.map(r=>{
+    const d=roomData[r.num]||{}, s=d.status||'pending';
+    const lbl={pending:'待查',progress:'查房中',normal:'正常',abnormal:'异常'}[s];
+    const iss=issueCount(d);
+    return `<div class="rc s-${s}" onclick="openRoom('${r.num}')">
+      ${iss>0?`<div class="rc-issues">${iss}</div>`:''}
+      <div class="rc-num">${r.num}</div>
+      <div class="rc-type">${r.type}</div>
+      <span class="badge b-${s}">${lbl}</span>
+    </div>`;
+  }).join('');
+  // abnormal
+  const abl=document.getElementById('ab-list');
+  const abns=ROOM_DEFS.filter(r=>(roomData[r.num]||{}).status==='abnormal');
+  if(!abns.length){
+    abl.innerHTML='<div style="text-align:center;color:var(--g400);font-size:13px;padding:16px 0">✓ 暂无异常房间</div>';
+  } else {
+    abl.innerHTML=abns.map(r=>{
+      const d=roomData[r.num], iss=issueNames(d);
+      return `<div class="ab-row" onclick="openRoom('${r.num}')">
+        <div class="ab-num">${r.num}</div>
+        <div class="ab-info">${iss.slice(0,3).join('、')||'已标记异常'}</div>
+        <div class="ab-arr">›</div>
+      </div>`;
+    }).join('');
+  }
+}
+function issueCount(d){ return d.checks?Object.values(d.checks).filter(v=>v==='issue').length:0; }
+function issueNames(d){
+  if(!d.checks) return [];
+  const names=[];
+  CHECK_SECTIONS.forEach(sec=>sec.items.forEach(item=>{
+    if(d.checks[item.id]==='issue') names.push(item.name);
+  }));
+  return names;
+}
+
+// ═══════════════════════════════════════════════════════
+// INSPECTION
+// ═══════════════════════════════════════════════════════
+let curRoom=null, insState={};
+
+function openRoom(num){
+  curRoom=num;
+  const def=ROOM_DEFS.find(r=>r.num===num);
+  const ex=roomData[num]||{};
+  insState={
+    checks:   Object.assign({},ex.checks||{}),
+    inventory:JSON.parse(JSON.stringify(ex.inventory||buildDefaultInventory())),
+    photos:   [...(ex.photos||[])],
+    remark:   ex.remark||'',
+  };
+  document.getElementById('ins-title').textContent=`${num}号房 查房`;
+  buildInsForm(def);
+  show('sinspect');
+  if((roomData[num]||{}).status==='pending'){
+    roomData[num]=Object.assign({},roomData[num],{status:'progress'});
+    saveRooms();
+  }
+}
+
+function buildDefaultInventory(){
+  const inv={};
+  products.forEach(p=>{
+    inv[p.id]={initial:p.parLevel, remaining:p.parLevel};
+  });
+  return inv;
+}
+
+function buildInsForm(def){
+  const body=document.getElementById('ins-body');
+  let html=`<div class="room-bar">
+    <div class="room-bar-num">${def.num}</div>
+    <div class="room-bar-info">
+      <div class="room-bar-name">${def.num}号房</div>
+      <div class="room-bar-type">${def.type}</div>
+    </div>
+    <span class="badge b-${(roomData[def.num]||{}).status||'pending'}">
+      ${{pending:'待查',progress:'查房中',normal:'正常',abnormal:'异常'}[(roomData[def.num]||{}).status||'pending']}
+    </span>
+  </div>`;
+
+  // Check sections
+  CHECK_SECTIONS.forEach(sec=>{
+    const done=sec.items.filter(i=>insState.checks[i.id]).length;
+    html+=`<div class="card">
+      <div class="card-hd">
+        <span class="card-hd-icon">${sec.icon}</span>
+        <span class="card-hd-title">${sec.title}</span>
+        <span class="card-hd-note" id="prog-${sec.id}">${done}/${sec.items.length}</span>
+      </div>`;
+    sec.items.forEach(item=>{
+      const v=insState.checks[item.id]||'';
+      html+=`<div class="ci">
+        <div class="ci-info">
+          <div class="ci-name">${item.name}</div>
+          <div class="ci-desc">${item.desc}</div>
+          <div class="ci-tog">
+            <button class="tog ${v==='ok'?'t-ok':''}" onclick="setChk('${item.id}','ok','${sec.id}')">✓ 正常</button>
+            <button class="tog ${v==='issue'?'t-issue':''}" onclick="setChk('${item.id}','issue','${sec.id}')">✗ 异常</button>
+            <button class="tog ${v==='na'?'t-na':''}" onclick="setChk('${item.id}','na','${sec.id}')">— 无此项</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+
+  // ── Inventory section ──
+  html+=`<div class="card">
+    <div class="card-hd">
+      <span class="card-hd-icon">📦</span>
+      <span class="card-hd-title">零食 / 饮料盘点</span>
+      <span class="card-hd-note chip chip-warn" id="inv-total-chip">合计 ¥${calcInvTotal()}</span>
+    </div>
+    <div style="padding:8px 8px 4px">
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th class="left">商品</th>
+            <th>陈列数</th>
+            <th>现存</th>
+            <th>消费</th>
+            <th>金额</th>
+          </tr>
+        </thead>
+        <tbody id="inv-tbody">`;
+  products.forEach(p=>{
+    const inv=insState.inventory[p.id]||(insState.inventory[p.id]={initial:p.parLevel,remaining:p.parLevel});
+    const con=Math.max(0,inv.initial-inv.remaining);
+    html+=invRow(p,inv.initial,inv.remaining,con);
+  });
+  html+=`</tbody></table>
+    </div>
+    <div class="inv-footer">
+      <span class="inv-total-lbl">本次消费合计</span>
+      <span class="inv-total-val" id="inv-total-val">¥${calcInvTotal()}</span>
+    </div>
+    <div style="padding:8px 16px 12px;font-size:12px;color:var(--g500)">
+      ⓘ「陈列数」为标准备货量，「现存」为目前实际剩余，系统自动计算消费数量及金额
+    </div>
+  </div>`;
+
+  // Photos
+  html+=`<div class="card">
+    <div class="card-hd">
+      <span class="card-hd-icon">📷</span>
+      <span class="card-hd-title">拍照存档</span>
+      <span class="card-hd-note" id="ph-cnt">${insState.photos.length} 张</span>
+    </div>
+    <div class="photo-grid" id="ph-grid">${renderPhotoGrid()}</div>
+  </div>`;
+
+  // Remark
+  html+=`<div class="card">
+    <div class="card-hd"><span class="card-hd-icon">📝</span><span class="card-hd-title">备注说明</span></div>
+    <div class="remark-wrap">
+      <textarea class="remark-in" id="remark-in" placeholder="记录特殊情况…" oninput="insState.remark=this.value">${insState.remark}</textarea>
+    </div>
+  </div>`;
+
+  body.innerHTML=html;
+}
+
+function invRow(p,initial,remaining,con){
+  const amt=con*p.price;
+  return `<tr id="inv-row-${p.id}">
+    <td class="left"><span style="font-size:16px">${p.icon}</span> ${p.name}</td>
+    <td><span style="font-weight:600;color:var(--g600)">${initial}</span></td>
+    <td><input class="inv-num-in" id="inv-rem-${p.id}" type="number" min="0" max="${initial}"
+        value="${remaining}" oninput="updateInvRow('${p.id}',${initial},${p.price})"></td>
+    <td><span class="inv-consumed ${con>0?'pos':'zero'}" id="inv-con-${p.id}">${con}</span></td>
+    <td><span class="inv-price" id="inv-amt-${p.id}">${amt>0?'¥'+amt:'-'}</span></td>
+  </tr>`;
+}
+
+function updateInvRow(pid,initial,price){
+  const inp=document.getElementById('inv-rem-'+pid);
+  let rem=parseInt(inp.value)||0;
+  rem=Math.max(0,Math.min(initial,rem));
+  inp.value=rem;
+  const con=initial-rem;
+  const amt=con*price;
+  insState.inventory[pid]={initial,remaining:rem};
+  document.getElementById('inv-con-'+pid).textContent=con;
+  document.getElementById('inv-con-'+pid).className='inv-consumed '+(con>0?'pos':'zero');
+  document.getElementById('inv-amt-'+pid).textContent=amt>0?'¥'+amt:'-';
+  const total=calcInvTotal();
+  document.getElementById('inv-total-val').textContent='¥'+total;
+  document.getElementById('inv-total-chip').textContent='合计 ¥'+total;
+}
+
+function calcInvTotal(){
+  return products.reduce((s,p)=>{
+    const inv=insState.inventory[p.id];
+    if(!inv) return s;
+    return s+Math.max(0,inv.initial-inv.remaining)*p.price;
+  },0);
+}
+
+function setChk(id,val,secId){
+  insState.checks[id]=val;
+  // update toggle buttons
+  document.querySelectorAll(`[onclick*="'${id}'"]`).forEach(btn=>{
+    btn.className='tog';
+    const v=btn.getAttribute('onclick').match(/'(ok|issue|na)'/)[1];
+    if(v===val) btn.className='tog t-'+({'ok':'ok','issue':'issue','na':'na'}[val]);
+  });
+  // update progress
+  const sec=CHECK_SECTIONS.find(s=>s.id===secId);
+  if(sec){
+    const done=sec.items.filter(i=>insState.checks[i.id]).length;
+    const el=document.getElementById('prog-'+secId);
+    if(el) el.textContent=done+'/'+sec.items.length;
+  }
+}
+
+// Photos
+function renderPhotoGrid(){
+  return insState.photos.map((src,i)=>`
+    <div class="ph-thumb"><img src="${src}">
+      <button class="ph-del" onclick="delPhoto(${i})">×</button>
+    </div>`).join('')+
+    `<div class="ph-add" onclick="document.getElementById('photo-in').click()">
+      <div class="ph-add-icon">📷</div><div>拍照</div>
+    </div>`;
+}
+document.getElementById('photo-in').addEventListener('change',function(e){
+  const file=e.target.files[0]; if(!file) return;
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    insState.photos.push(ev.target.result);
+    refreshPhotos();
+  };
+  rd.readAsDataURL(file);
+});
+function delPhoto(i){ insState.photos.splice(i,1); refreshPhotos(); }
+function refreshPhotos(){
+  const g=document.getElementById('ph-grid');
+  const c=document.getElementById('ph-cnt');
+  if(g) g.innerHTML=renderPhotoGrid();
+  if(c) c.textContent=insState.photos.length+' 张';
+}
+
+function tmpSave(){
+  doSaveState('progress'); toast('已暂存');
+}
+
+function doSaveState(status){
+  insState.remark=(document.getElementById('remark-in')||{}).value||insState.remark;
+  roomData[curRoom]={
+    ...roomData[curRoom], status,
+    checks:   {...insState.checks},
+    inventory:JSON.parse(JSON.stringify(insState.inventory)),
+    photos:   [...insState.photos],
+    remark:   insState.remark,
+    time:     new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),
+    staff:    currentUser,
+  };
+  saveRooms();
+}
+
+function doSubmit(result){
+  const hasIssue=result==='abnormal'||Object.values(insState.checks).includes('issue');
+  const total=calcInvTotal();
+  const body=result==='normal'
+    ?`确认 ${curRoom} 号房查房完成？${total>0?`<br><br>⚠ 本次消费 <b>¥${total}</b>，请确保已向客人收取。`:''}`
+    :`确认将 ${curRoom} 号房标记为异常？<br>请确保已拍照或备注记录问题。`;
+  openConfirm(result==='normal'?'确认查房完成':'标记异常房间', body, ()=>{
+    doSaveState(result);
+    // deduct from warehouse stock
+    products.forEach(p=>{
+      const inv=insState.inventory[p.id];
+      if(!inv) return;
+      const con=Math.max(0,inv.initial-inv.remaining);
+      if(con>0){
+        stockData[p.id]=Math.max(0,(stockData[p.id]||0)-con);
+        consumed[p.id]=(consumed[p.id]||0)+con;
+      }
+    });
+    saveAdmin();
+    pushHistory();
+    toast(result==='normal'?`✓ ${curRoom}号房 完成`:`⚠ ${curRoom}号房 已标记异常`);
+    goBack();
+  });
+}
+
+function pushHistory(){
+  const today=todayKey();
+  const ex=history.find(h=>h.date===today);
+  const rooms=Object.keys(roomData).filter(k=>['normal','abnormal'].includes(roomData[k].status));
+  if(ex){ ex.rooms=rooms; ex.staff=currentUser; }
+  else history.unshift({date:today,staff:currentUser,rooms});
+  localStorage.setItem('cfr_history',JSON.stringify(history.slice(0,90)));
+}
+
+// ═══════════════════════════════════════════════════════
+// REPORT
+// ═══════════════════════════════════════════════════════
+function renderReport(){
+  const body=document.getElementById('rpt-body');
+  const done=ROOM_DEFS.filter(r=>['normal','abnormal'].includes((roomData[r.num]||{}).status));
+  const norms=done.filter(r=>roomData[r.num].status==='normal');
+  const abns =done.filter(r=>roomData[r.num].status==='abnormal');
+  const totalRev=done.reduce((s,r)=>{
+    const d=roomData[r.num]; if(!d||!d.inventory) return s;
+    return s+products.reduce((ss,p)=>{
+      const inv=d.inventory[p.id]; if(!inv) return ss;
+      return ss+Math.max(0,inv.initial-inv.remaining)*p.price;
+    },0);
+  },0);
+  let html=`<div class="rpt-sum">
+    <div class="rpt-title">今日查房报告</div>
+    <div class="rpt-dt">${new Date().toLocaleDateString('zh-CN',
+      {year:'numeric',month:'long',day:'numeric'})} · ${currentUser}</div>
+    <div class="rpt-nums">
+      <div class="rpt-ni"><div class="rpt-nv">${done.length}</div><div class="rpt-nl">已查</div></div>
+      <div class="rpt-ni"><div class="rpt-nv">${norms.length}</div><div class="rpt-nl">正常</div></div>
+      <div class="rpt-ni"><div class="rpt-nv" style="color:#fca5a5">${abns.length}</div><div class="rpt-nl">异常</div></div>
+      <div class="rpt-ni"><div class="rpt-nv" style="color:#fbbf24">¥${totalRev}</div><div class="rpt-nl">消费额</div></div>
+    </div>
+  </div>`;
+
+  if(!done.length){
+    html+=`<div class="empty"><div class="empty-icon">📋</div><div>今日暂无查房记录</div></div>`;
+  } else {
+    [...abns,...norms].forEach(r=>{
+      const d=roomData[r.num];
+      const iss=issueNames(d);
+      const rev=products.reduce((s,p)=>{
+        const inv=d.inventory&&d.inventory[p.id]; if(!inv) return s;
+        return s+Math.max(0,inv.initial-inv.remaining)*p.price;
+      },0);
+      html+=`<div class="rpt-card">
+        <div class="rpt-ch">
+          <div class="rpt-cn" style="color:${d.status==='abnormal'?'var(--r)':'var(--g)'}">${r.num}</div>
+          <div class="rpt-ct">${r.type}</div>
+          <span class="badge b-${d.status}">${d.status==='normal'?'正常':'异常'}</span>
+        </div>
+        <div class="rpt-cb">
+          ${iss.length?iss.map(n=>`<div class="rpt-iss">⚠ ${n} 异常</div>`).join(''):'<div class="rpt-ok">✓ 电器卫生全部正常</div>'}
+          ${rev>0?`<div style="font-size:12px;color:var(--o);margin-top:4px">🍫 消费 ¥${rev}</div>`:''}
+          ${d.remark?`<div style="font-size:12px;color:var(--g500);margin-top:4px">备注：${d.remark}</div>`:''}
+          ${d.photos&&d.photos.length?`<div class="rpt-photos">${d.photos.map(p=>`<img class="rpt-photo" src="${p}">`).join('')}</div>`:''}
+          <div style="font-size:11px;color:var(--g400);margin-top:6px">${d.time} · ${d.staff}</div>
+        </div>
+      </div>`;
+    });
+  }
+  body.innerHTML=html;
+}
+
+function shareReport(){
+  const done=ROOM_DEFS.filter(r=>['normal','abnormal'].includes((roomData[r.num]||{}).status));
+  const abns=ROOM_DEFS.filter(r=>(roomData[r.num]||{}).status==='abnormal');
+  const rev=done.reduce((s,r)=>{
+    const d=roomData[r.num]; if(!d||!d.inventory) return s;
+    return s+products.reduce((ss,p)=>{
+      const inv=d.inventory[p.id]; if(!inv) return ss;
+      return ss+Math.max(0,inv.initial-inv.remaining)*p.price;
+    },0);
+  },0);
+  let t=`【查房日报】${new Date().toLocaleDateString('zh-CN')}\n查房人：${currentUser}\n`;
+  t+=`已查：${done.length}/${ROOM_DEFS.length} 间\n`;
+  if(abns.length){
+    t+=`\n⚠ 异常房间：\n`;
+    abns.forEach(r=>{ t+=`  ${r.num}号：${issueNames(roomData[r.num]).join('、')||'已标记异常'}\n`; });
+  } else { t+=`✓ 无异常房间\n`; }
+  if(rev>0) t+=`\n🍫 零食/饮料消费合计：¥${rev}`;
+  if(navigator.share){ navigator.share({title:'查房日报',text:t}); }
+  else if(navigator.clipboard){ navigator.clipboard.writeText(t).then(()=>toast('已复制，请粘贴发送')); }
+  else { openConfirm('发群内容',t.replace(/\n/g,'<br>'),()=>{}); }
+}
+
+// ═══════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════
+function renderHistory(){
+  const body=document.getElementById('hist-body');
+  if(!history.length){
+    body.innerHTML='<div class="empty"><div class="empty-icon">🕐</div><div>暂无历史记录</div></div>';
+    return;
+  }
+  body.innerHTML=history.map(h=>{
+    const d=new Date(h.date);
+    return `<div class="hist-item">
+      <div class="hist-db"><div class="hist-day">${d.getDate()}</div><div class="hist-mo">${d.getMonth()+1}月</div></div>
+      <div class="hist-info">
+        <div class="hist-staff">${h.staff}</div>
+        <div class="hist-detail">完成 ${h.rooms.length} 间查房</div>
+      </div>
+      <div style="color:var(--g300);font-size:18px">›</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// ADMIN — TABS
+// ═══════════════════════════════════════════════════════
+function switchAdminTab(tab){
+  document.querySelectorAll('.atab').forEach((b,i)=>{
+    const tabs=['products','inventory','restock','stats'];
+    b.classList.toggle('on',tabs[i]===tab);
+  });
+  document.querySelectorAll('.atab-body').forEach(b=>b.classList.remove('on'));
+  document.getElementById('atab-'+tab).classList.add('on');
+  document.getElementById('prod-fab').style.display=tab==='products'?'flex':'none';
+  if(tab==='products')  renderProducts();
+  if(tab==='inventory') renderInventoryAdmin();
+  if(tab==='restock')   renderRestock();
+  if(tab==='stats')     renderStatsAdmin();
+}
+
+// ── Products ──
+function renderProducts(){
+  const list=document.getElementById('prod-list');
+  if(!products.length){
+    list.innerHTML='<div class="empty"><div class="empty-icon">📦</div><div>暂无商品，点击 ＋ 添加</div></div>';
+    return;
+  }
+  const cats=[...new Set(products.map(p=>p.cat))];
+  list.innerHTML=cats.map(cat=>{
+    const items=products.filter(p=>p.cat===cat);
+    return `<div class="sec-ttl" style="margin-top:4px">${cat}</div>`+
+    items.map(p=>`
+      <div class="prod-item">
+        <div class="prod-icon">${p.icon}</div>
+        <div class="prod-info">
+          <div class="prod-name">${p.name}</div>
+          <div class="prod-meta">Par: ${p.parLevel} ${p.unit}/间 · 库存: ${stockData[p.id]||0} ${p.unit}</div>
+        </div>
+        <div>
+          <div class="prod-price">¥${p.price}</div>
+          <div class="prod-price-lbl">/${p.unit}</div>
+        </div>
+        <div class="prod-acts">
+          <button class="btn btn-ghost btn-xs" onclick="openProductForm('${p.id}')">编辑</button>
+          <button class="btn btn-xs" style="background:var(--rl);color:var(--r)" onclick="deleteProduct('${p.id}')">删除</button>
+        </div>
+      </div>`).join('');
+  }).join('');
+}
+
+function openProductForm(id){
+  const p=id?products.find(x=>x.id===id):null;
+  document.getElementById('pf-title').textContent=p?'编辑商品':'添加商品';
+  document.getElementById('pf-name').value=p?p.name:'';
+  document.getElementById('pf-cat').value=p?p.cat:'饮料';
+  document.getElementById('pf-price').value=p?p.price:'';
+  document.getElementById('pf-unit').value=p?p.unit:'';
+  document.getElementById('pf-icon').value=p?p.icon:'';
+  document.getElementById('pf-id').value=p?p.id:'';
+  document.getElementById('modal-product').classList.add('open');
+}
+
+function saveProduct(){
+  const id=document.getElementById('pf-id').value;
+  const name=(document.getElementById('pf-name').value||'').trim();
+  const cat =document.getElementById('pf-cat').value;
+  const price=parseFloat(document.getElementById('pf-price').value)||0;
+  const unit=(document.getElementById('pf-unit').value||'件').trim();
+  const icon=(document.getElementById('pf-icon').value||'📦').trim();
+  if(!name){ toast('请输入商品名称'); return; }
+  if(!price){ toast('请输入售价'); return; }
+  if(id){
+    const idx=products.findIndex(p=>p.id===id);
+    if(idx>=0) products[idx]={...products[idx],name,cat,price,unit,icon};
+  } else {
+    const newId='p'+Date.now();
+    products.push({id:newId,name,cat,price,unit,icon,parLevel:1});
+    stockData[newId]=0;
+  }
+  saveAdmin(); closeModal('modal-product');
+  renderProducts(); toast('已保存');
+}
+
+function deleteProduct(id){
+  openConfirm('删除商品','确认删除该商品？删除后不可恢复，历史查房记录不受影响。',()=>{
+    products=products.filter(p=>p.id!==id);
+    delete stockData[id];
+    saveAdmin(); renderProducts(); toast('已删除');
+  });
+}
+
+// ── Inventory Admin ──
+function renderInventoryAdmin(){
+  const list=document.getElementById('inv-admin-list');
+  list.innerHTML=products.map(p=>{
+    const stock=stockData[p.id]||0;
+    const needed=ROOM_DEFS.length*p.parLevel;
+    const pct=Math.min(100,Math.round(stock/Math.max(1,needed)*100));
+    const color=pct>60?'var(--g)':pct>30?'var(--w)':'var(--r)';
+    return `<div class="inv-admin-row">
+      <div class="inv-a-top">
+        <span class="inv-a-icon">${p.icon}</span>
+        <span class="inv-a-name">${p.name}</span>
+        <span class="inv-a-cat">${p.cat}</span>
+      </div>
+      <div class="inv-a-fields">
+        <div class="inv-a-field">
+          <label>Par Level（间）</label>
+          <input type="number" min="0" value="${p.parLevel}" id="par-${p.id}"
+            onchange="updatePar('${p.id}')">
+        </div>
+        <div class="inv-a-field">
+          <label>仓库库存量</label>
+          <input type="number" min="0" value="${stock}" id="stk-${p.id}"
+            onchange="updateStock('${p.id}')">
+        </div>
+        <div class="inv-a-field">
+          <label>满铺需求量</label>
+          <input type="number" value="${needed}" disabled style="color:var(--g500);background:var(--g100)">
+        </div>
+      </div>
+      <div class="stock-bar">
+        <div class="stock-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--g400)">
+        <span>库存 ${stock} ${p.unit}</span>
+        <span style="color:${color};font-weight:600">${pct}%</span>
+        <span>满铺需 ${needed} ${p.unit}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updatePar(pid){
+  const v=parseInt(document.getElementById('par-'+pid).value)||0;
+  const idx=products.findIndex(p=>p.id===pid);
+  if(idx>=0) products[idx].parLevel=v;
+  saveAdmin(); renderInventoryAdmin();
+}
+function updateStock(pid){
+  const v=parseInt(document.getElementById('stk-'+pid).value)||0;
+  stockData[pid]=v;
+  saveAdmin(); renderInventoryAdmin();
+}
+
+// ── Restock Report ──
+function renderRestock(){
+  const el=document.getElementById('restock-content');
+  // Calculate today's total consumed per product
+  const needRestock=products.map(p=>{
+    const con=consumed[p.id]||0;
+    const stock=stockData[p.id]||0;
+    const low=stock<(ROOM_DEFS.length*p.parLevel*0.3);
+    return {p, con, stock, low};
+  }).filter(x=>x.con>0||x.low);
+
+  const totalCon=products.reduce((s,p)=>s+(consumed[p.id]||0)*p.price,0);
+
+  if(!needRestock.length){
+    el.innerHTML=`<div class="restock-ok">✓ 今日暂无消费记录，无需补货</div>`;
+    return;
+  }
+  let html=`<div class="restock-sum">
+    <div class="restock-sum-icon">📋</div>
+    <div class="restock-sum-info">
+      <div class="restock-sum-title">今日消费 · 补货清单</div>
+      <div class="restock-sum-sub">共 ${needRestock.length} 个品类需关注 · 消费金额 ¥${totalCon}</div>
+    </div>
+  </div>`;
+
+  needRestock.forEach(({p,con,stock,low})=>{
+    const chip=low?`<span class="chip chip-danger">库存不足</span>`:(con>0?`<span class="chip chip-warn">已消费</span>`:'');
+    html+=`<div class="restock-item">
+      <div class="restock-icon">${p.icon}</div>
+      <div class="restock-info">
+        <div class="restock-name">${p.name} ${chip}</div>
+        <div class="restock-detail">
+          ${con>0?`今日消费 ${con} ${p.unit}，收入 ¥${con*p.price}`:''}
+          ${con>0&&low?' · ':' '}
+          ${low?`库存仅剩 ${stock} ${p.unit}，建议补货`:''}
+        </div>
+      </div>
+      <div class="restock-qty">
+        <div class="restock-qty-num">${con}</div>
+        <div class="restock-qty-lbl">补 ${p.unit}</div>
+      </div>
+    </div>`;
+  });
+
+  // Low stock warnings
+  const lowStock=products.filter(p=>(stockData[p.id]||0)<(ROOM_DEFS.length*p.parLevel*0.3)&&!(consumed[p.id]>0));
+  if(lowStock.length){
+    html+=`<div class="sec-ttl" style="margin-top:16px">⚠ 库存预警（未消费但库存偏低）</div>`;
+    lowStock.forEach(p=>{
+      html+=`<div class="restock-item">
+        <div class="restock-icon">${p.icon}</div>
+        <div class="restock-info">
+          <div class="restock-name">${p.name}</div>
+          <div class="restock-detail">库存 ${stockData[p.id]||0} ${p.unit}，满铺需 ${ROOM_DEFS.length*p.parLevel} ${p.unit}</div>
+        </div>
+        <div class="restock-qty">
+          <div class="restock-qty-num" style="color:var(--w)">${stockData[p.id]||0}</div>
+          <div class="restock-qty-lbl">剩余</div>
+        </div>
+      </div>`;
+    });
+  }
+  el.innerHTML=html;
+}
+
+// ── Stats Admin ──
+function renderStatsAdmin(){
+  const el=document.getElementById('stats-content');
+  const done=ROOM_DEFS.filter(r=>['normal','abnormal'].includes((roomData[r.num]||{}).status));
+  const totalRev=done.reduce((s,r)=>{
+    const d=roomData[r.num]; if(!d||!d.inventory) return s;
+    return s+products.reduce((ss,p)=>{
+      const inv=d.inventory[p.id]; if(!inv) return ss;
+      return ss+Math.max(0,inv.initial-inv.remaining)*p.price;
+    },0);
+  },0);
+
+  let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div class="card" style="padding:16px;text-align:center">
+      <div style="font-size:28px;font-weight:700;color:var(--o)">¥${totalRev}</div>
+      <div style="font-size:12px;color:var(--g500);margin-top:4px">今日零食/饮料收入</div>
+    </div>
+    <div class="card" style="padding:16px;text-align:center">
+      <div style="font-size:28px;font-weight:700;color:var(--p)">${done.length}</div>
+      <div style="font-size:12px;color:var(--g500);margin-top:4px">今日已查房间数</div>
+    </div>
+  </div>`;
+
+  html+=`<div class="card">
+    <div class="card-hd"><span class="card-hd-icon">📊</span><span class="card-hd-title">各商品消费明细</span></div>
+    <table class="inv-table" style="margin-bottom:0">
+      <thead><tr>
+        <th class="left">商品</th><th>消费数</th><th>单价</th><th>金额</th>
+      </tr></thead><tbody>`;
+  products.forEach(p=>{
+    const con=consumed[p.id]||0;
+    const amt=con*p.price;
+    html+=`<tr>
+      <td class="left">${p.icon} ${p.name}</td>
+      <td>${con>0?`<b style="color:var(--r)">${con}</b>`:'-'}</td>
+      <td>¥${p.price}</td>
+      <td>${amt>0?`<b style="color:var(--o)">¥${amt}</b>`:'-'}</td>
+    </tr>`;
+  });
+  html+=`<tr style="background:var(--g50)">
+    <td class="left"><b>合计</b></td><td>-</td><td>-</td>
+    <td><b style="color:var(--o)">¥${totalRev}</b></td>
+  </tr></tbody></table></div>`;
+
+  html+=`<div class="card">
+    <div class="card-hd"><span class="card-hd-icon">🏠</span><span class="card-hd-title">各房间消费</span></div>`;
+  done.forEach(r=>{
+    const d=roomData[r.num]; if(!d||!d.inventory) return;
+    const rev=products.reduce((s,p)=>{
+      const inv=d.inventory[p.id]; if(!inv) return s;
+      return s+Math.max(0,inv.initial-inv.remaining)*p.price;
+    },0);
+    if(rev===0) return;
+    const items=products.filter(p=>{
+      const inv=d.inventory[p.id];
+      return inv&&(inv.initial-inv.remaining)>0;
+    }).map(p=>{
+      const inv=d.inventory[p.id];
+      return `${p.icon}${p.name}×${inv.initial-inv.remaining}`;
+    }).join('  ');
+    html+=`<div style="padding:10px 16px;border-bottom:1px solid var(--g100);display:flex;align-items:center;gap:10px">
+      <span style="font-weight:700;color:var(--p);min-width:40px">${r.num}</span>
+      <span style="flex:1;font-size:12px;color:var(--g600)">${items}</span>
+      <span style="font-weight:700;color:var(--o)">¥${rev}</span>
+    </div>`;
+  });
+  html+=`</div>`;
+  el.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════
+// MODAL / TOAST
+// ═══════════════════════════════════════════════════════
+let _cb=null;
+function openConfirm(title,body,cb){
+  document.getElementById('mc-title').textContent=title;
+  document.getElementById('mc-body').innerHTML=body;
+  _cb=cb;
+  document.getElementById('mc-ok').onclick=()=>{ closeModal('modal-confirm'); if(_cb) _cb(); };
+  document.getElementById('modal-confirm').classList.add('open');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',function(e){ if(e.target===this) this.classList.remove('open'); });
+});
+let _tt;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+// ═══════════════════════════════════════════════════════
+// FAB GROUP
+// ═══════════════════════════════════════════════════════
+function toggleFab(){
+  document.getElementById('fab-group').classList.toggle('open');
+}
+document.addEventListener('click',function(e){
+  const fg=document.getElementById('fab-group');
+  if(fg&&!fg.contains(e.target)) fg.classList.remove('open');
+});
+
+// ═══════════════════════════════════════════════════════
+// BARCODE SCANNING
+// ═══════════════════════════════════════════════════════
+let scanStream=null, scanDetector=null, scanAnimId=null;
+let quaggaLoaded=false, quaggaRunning=false, torchOn=false;
+let scanResolveBarcode=null; // callback after barcode found
+
+// ── Open / close scan screen ──
+function openScan(){
+  document.getElementById('fab-group').classList.remove('open');
+  document.getElementById('scan-overlay').classList.add('open');
+  document.getElementById('scan-manual-in').value='';
+  document.getElementById('scan-hint').textContent='将条码对准框内，自动识别';
+  startCamera();
+}
+function closeScan(){
+  stopCamera();
+  document.getElementById('scan-overlay').classList.remove('open');
+}
+
+// ── Camera startup ──
+async function startCamera(){
+  try {
+    scanStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
+    });
+    const video=document.getElementById('scan-video');
+    video.srcObject=scanStream;
+    await video.play();
+    updateSvgMask();
+    startDetection();
+  } catch(err){
+    document.getElementById('scan-hint').textContent='⚠ 相机权限被拒绝，请手动输入条码';
+    console.warn('Camera error:',err);
+  }
+}
+function stopCamera(){
+  if(scanAnimId){ cancelAnimationFrame(scanAnimId); scanAnimId=null; }
+  stopQuagga();
+  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
+  torchOn=false;
+}
+
+// ── SVG mask: punch hole aligned to scan frame ──
+function updateSvgMask(){
+  const vp=document.querySelector('.scan-viewport');
+  const hole=document.getElementById('scan-hole');
+  if(!hole||!vp) return;
+  const vw=vp.offsetWidth, vh=vp.offsetHeight;
+  const fw=280, fh=170;
+  const x=(vw-fw)/2, y=(vh-fh)/2-vh*0.06;
+  hole.setAttribute('x',x);hole.setAttribute('y',y);
+  hole.setAttribute('width',fw);hole.setAttribute('height',fh);
+}
+
+// ── Torch ──
+async function toggleTorch(){
+  if(!scanStream) return;
+  const track=scanStream.getVideoTracks()[0];
+  if(!track) return;
+  try{
+    torchOn=!torchOn;
+    await track.applyConstraints({advanced:[{torch:torchOn}]});
+    document.getElementById('torch-btn').style.background=torchOn?'rgba(255,220,0,.4)':'rgba(255,255,255,.18)';
+  } catch(e){ toast('当前设备不支持手电筒'); }
+}
+
+// ── Detection engine: try native BarcodeDetector first, then Quagga2 ──
+function startDetection(){
+  if('BarcodeDetector' in window){
+    startNativeDetector();
+  } else {
+    loadQuagga2();
+  }
+}
+
+// ── Native BarcodeDetector (Chrome 83+, Android) ──
+function startNativeDetector(){
+  scanDetector=new BarcodeDetector({
+    formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']
+  });
+  document.getElementById('scan-hint').textContent='将条码对准框内（原生识别，速度快）';
+  detectNativeLoop();
+}
+async function detectNativeLoop(){
+  const video=document.getElementById('scan-video');
+  if(!scanStream||!scanDetector) return;
+  try{
+    const barcodes=await scanDetector.detect(video);
+    if(barcodes&&barcodes.length>0){
+      const code=barcodes[0].rawValue;
+      if(code) { onBarcodeFound(code); return; }
+    }
+  } catch(e){}
+  scanAnimId=requestAnimationFrame(detectNativeLoop);
+}
+
+// ── Quagga2 fallback ──
+function loadQuagga2(){
+  if(quaggaLoaded){startQuagga();return;}
+  document.getElementById('scan-hint').textContent='正在加载扫码组件…';
+  const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js';
+  s.onload=()=>{ quaggaLoaded=true; startQuagga(); };
+  s.onerror=()=>{
+    document.getElementById('scan-hint').textContent='⚠ 无法加载扫码库（需联网），请手动输入条码';
+  };
+  document.head.appendChild(s);
+}
+function startQuagga(){
+  if(quaggaRunning||!window.Quagga) return;
+  document.getElementById('scan-hint').textContent='将条码对准框内，自动识别';
+  const vp=document.querySelector('.scan-viewport');
+  const vw=vp.offsetWidth, vh=vp.offsetHeight;
+  const fw=280, fh=170;
+  const x=((vw-fw)/2)/vw, y=((vh-fh)/2-vh*0.06)/vh;
+  Quagga.init({
+    inputStream:{
+      type:'LiveStream',
+      target:document.getElementById('scan-video').parentElement,
+      constraints:{facingMode:'environment'},
+      area:{top:y*100+'%',right:(1-(x+fw/vw))*100+'%',
+            bottom:(1-(y+fh/vh))*100+'%',left:x*100+'%'},
+    },
+    decoder:{readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader',
+                       'code_128_reader','code_39_reader']},
+    locate:true,
+  },err=>{
+    if(err){ console.warn('Quagga init error',err);
+      document.getElementById('scan-hint').textContent='扫码初始化失败，请手动输入';
+      return;
+    }
+    Quagga.start(); quaggaRunning=true;
+  });
+  Quagga.onDetected(result=>{
+    const code=result&&result.codeResult&&result.codeResult.code;
+    if(code) onBarcodeFound(code);
+  });
+}
+function stopQuagga(){
+  if(quaggaRunning&&window.Quagga){ Quagga.stop(); quaggaRunning=false; }
+}
+
+// ── Barcode found ──
+function onBarcodeFound(code){
+  // Stop scanning immediately
+  if(scanAnimId){ cancelAnimationFrame(scanAnimId); scanAnimId=null; }
+  stopQuagga();
+  // Visual feedback
+  const banner=document.getElementById('scan-banner');
+  document.getElementById('scan-banner-txt').textContent=code;
+  banner.classList.add('show');
+  // Vibrate if supported
+  if(navigator.vibrate) navigator.vibrate([80,30,80]);
+  setTimeout(()=>{
+    banner.classList.remove('show');
+    closeScan();
+    openProductConfirm(code);
+  },700);
+}
+
+// ── Manual barcode entry ──
+function manualLookup(){
+  const code=(document.getElementById('scan-manual-in').value||'').trim();
+  if(!code){ toast('请输入条码号'); return; }
+  if(!/^\d{8,14}$/.test(code)){ toast('条码格式不正确（8-14位数字）'); return; }
+  onBarcodeFound(code);
+}
+document.getElementById('scan-manual-in').addEventListener('keydown',function(e){
+  if(e.key==='Enter') manualLookup();
+});
+
+// ═══════════════════════════════════════════════════════
+// PRODUCT CONFIRM (after barcode scan)
+// ═══════════════════════════════════════════════════════
+let currentBarcode='', prodPhotoData='';
+
+function openProductConfirm(barcode){
+  currentBarcode=barcode; prodPhotoData='';
+  // Reset form
+  document.getElementById('pcd-barcode').textContent=barcode;
+  document.getElementById('pcd-name').value='';
+  document.getElementById('pcd-cat').value='饮料';
+  document.getElementById('pcd-icon').value='';
+  document.getElementById('pcd-unit').value='';
+  document.getElementById('pcd-price').value='';
+  document.getElementById('pcd-par').value='1';
+  document.getElementById('pcd-stock').value='';
+  document.getElementById('pcd-edit-id').value='';
+  setApiTag('spin','查询数据库…');
+  document.getElementById('pcd-api-source').textContent='';
+  document.getElementById('pcd-api-note').textContent='';
+  resetProdPhoto();
+  document.getElementById('modal-scan-confirm').classList.add('open');
+  // Start lookup
+  lookupBarcode(barcode);
+}
+
+function setApiTag(cls,txt){
+  const t=document.getElementById('pcd-api-tag');
+  t.className='api-tag '+cls; t.textContent=txt;
+}
+
+async function lookupBarcode(barcode){
+  // 1. Try 3023data first if key configured (higher priority for Chinese products)
+  const apiKey=localStorage.getItem('cfr_3023key')||'';
+  if(apiKey){
+    try{
+      setApiTag('spin','3023data 查询…');
+      const r=await fetch(`https://api.3023data.com/item/barcode?appkey=${apiKey}&id=${barcode}`,
+        {signal:AbortSignal.timeout(5000)});
+      const d=await r.json();
+      if(d&&d.status===1&&d.data&&d.data.title){
+        fillProductFromData({
+          name:d.data.title,
+          brand:d.data.brand||'',
+          cat:guessCat(d.data.title+' '+(d.data.type||'')),
+          img:d.data.image||'',
+          source:'3023data（国内库）',
+        });
+        return;
+      }
+    }catch(e){ console.log('3023data error',e); }
+  }
+  // 2. Open Food Facts
+  try{
+    setApiTag('spin','Open Food Facts 查询…');
+    const r=await fetch(
+      `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
+      {signal:AbortSignal.timeout(7000)}
+    );
+    const d=await r.json();
+    if(d&&d.status===1&&d.product){
+      const p=d.product;
+      const name=p.product_name_zh||p.product_name||p.brands||'';
+      if(name){
+        fillProductFromData({
+          name,
+          brand:p.brands||'',
+          cat:guessCat((p.categories||'')+' '+name),
+          img:p.image_front_small_url||p.image_url||'',
+          source:'Open Food Facts（国际库）',
+          qty:p.quantity||'',
+        });
+        return;
+      }
+    }
+  }catch(e){ console.log('OFF error',e); }
+  // 3. Not found
+  setApiTag('no','未找到商品');
+  document.getElementById('pcd-api-source').textContent='条码：'+barcode;
+  document.getElementById('pcd-api-note').textContent='数据库中未找到该商品，请手动填写信息';
+}
+
+function fillProductFromData({name,brand,cat,img,source,qty}){
+  document.getElementById('pcd-name').value=name+(brand&&!name.includes(brand)?'（'+brand+'）':'');
+  document.getElementById('pcd-cat').value=cat;
+  document.getElementById('pcd-icon').value=catToEmoji(cat);
+  if(qty) document.getElementById('pcd-unit').value=guessUnit(qty);
+  setApiTag('ok','✓ 已识别');
+  document.getElementById('pcd-api-source').textContent='数据来源：'+source;
+  document.getElementById('pcd-api-note').textContent='商品名称/分类已自动填入，请核实并填写本店售价';
+  // Load product image if available
+  if(img){
+    const wrap=document.getElementById('pcd-img-wrap');
+    wrap.innerHTML=`<img class="pcd-img" src="${img}" onerror="this.parentNode.innerHTML=resetProdPhotoHTML()">
+      <button class="pcd-img-btn" onclick="triggerProdPhoto()">📷</button>`;
+  }
+}
+
+function guessCat(text){
+  text=(text||'').toLowerCase();
+  if(/water|juice|tea|milk|drink|饮料|汽水|果汁|牛奶|茶|水|可乐|雪碧|beverage|soda/.test(text)) return '饮料';
+  if(/beer|wine|spirit|酒|啤酒|白酒|红酒|洋酒/.test(text)) return '酒水';
+  if(/chip|cookie|candy|snack|biscuit|nut|零食|饼干|薯片|糖|坚果|巧克力/.test(text)) return '零食';
+  return '其他';
+}
+function catToEmoji(cat){
+  return {饮料:'🥤',零食:'🍫',酒水:'🍺',其他:'📦'}[cat]||'📦';
+}
+function guessUnit(qty){
+  if(!qty) return '';
+  if(/ml|毫升|mL/i.test(qty)) return '瓶';
+  if(/g|克|gram/i.test(qty)) return '包';
+  if(/罐/.test(qty)) return '罐';
+  return '件';
+}
+
+// Product photo
+function resetProdPhotoHTML(){
+  return `<div class="pcd-img-placeholder" onclick="triggerProdPhoto()">
+    <span class="pi">📷</span><span>拍商品照</span></div>`;
+}
+function resetProdPhoto(){
+  prodPhotoData='';
+  document.getElementById('pcd-img-wrap').innerHTML=resetProdPhotoHTML();
+}
+function triggerProdPhoto(){
+  document.getElementById('prod-photo-in').value='';
+  document.getElementById('prod-photo-in').click();
+}
+document.getElementById('prod-photo-in').addEventListener('change',function(e){
+  const file=e.target.files[0]; if(!file) return;
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    prodPhotoData=ev.target.result;
+    document.getElementById('pcd-img-wrap').innerHTML=
+      `<img class="pcd-img" src="${prodPhotoData}">
+       <button class="pcd-img-btn" onclick="triggerProdPhoto()">📷</button>`;
+  };
+  rd.readAsDataURL(file);
+});
+
+function saveScanProduct(){
+  const name=(document.getElementById('pcd-name').value||'').trim();
+  const price=parseFloat(document.getElementById('pcd-price').value)||0;
+  if(!name){ toast('请输入商品名称'); return; }
+  if(!price){ toast('请输入售价'); return; }
+  const cat  =document.getElementById('pcd-cat').value;
+  const icon =(document.getElementById('pcd-icon').value||catToEmoji(cat)).trim();
+  const unit =(document.getElementById('pcd-unit').value||'件').trim();
+  const par  =parseInt(document.getElementById('pcd-par').value)||1;
+  const stock=parseInt(document.getElementById('pcd-stock').value)||0;
+  const editId=document.getElementById('pcd-edit-id').value;
+  // Check if this barcode already exists
+  const existing=products.find(p=>p.barcode===currentBarcode);
+  if(existing&&(!editId||editId!==existing.id)){
+    toast(`条码已存在：${existing.name}`); return;
+  }
+  const newId=editId||('p'+Date.now());
+  const prod={id:newId,name,cat,price,unit,icon,parLevel:par,
+    barcode:currentBarcode,photo:prodPhotoData||''};
+  if(editId){ const idx=products.findIndex(p=>p.id===editId); if(idx>=0) products[idx]=prod; }
+  else { products.push(prod); stockData[newId]=stock; }
+  saveAdmin();
+  closeModal('modal-scan-confirm');
+  renderProducts();
+  toast(`✓ ${name} 已添加`);
+}
+
+// ═══════════════════════════════════════════════════════
+// API KEY SETTINGS
+// ═══════════════════════════════════════════════════════
+function loadApiKeyField(){
+  document.getElementById('apikey-in').value=localStorage.getItem('cfr_3023key')||'';
+}
+function saveApiKey(){
+  const key=(document.getElementById('apikey-in').value||'').trim();
+  if(key) localStorage.setItem('cfr_3023key',key);
+  else localStorage.removeItem('cfr_3023key');
+  closeModal('modal-apikey');
+  toast(key?'✓ 3023data API Key 已保存':'已清除 API Key');
+}
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+loadAll();
+if(currentUser){
+  if(currentRole==='admin'){
+    document.getElementById('adm-user').textContent=currentUser;
+    show('sadmin'); switchAdminTab('products');
+  } else {
+    renderDash(); show('sdash');
+  }
+}
+</script>
+</body>
+</html>

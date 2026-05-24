@@ -561,16 +561,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue"
 <!-- ═══════════════════════ 3023 API KEY SETTINGS ═══════════════════════ -->
 
 <!-- ═══════════════════════ FIREBASE CONFIG ═══════════════════════ -->
-
-<!-- Toast -->
-<div class="toast" id="toast"></div>
 <!-- Photo inputs -->
 <input type="file" id="photo-in"     accept="image/*" capture="environment" style="display:none">
 <input type="file" id="prod-photo-in" accept="image/*" capture="environment" style="display:none">
 
 <!-- Firebase SDK must load BEFORE main script so firebase is defined when init runs -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/@cloudbase/js-sdk@2/dist/cloudbase.full.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -844,7 +840,9 @@ function buildInsForm(def){
     <div class="card-hd">
       <span class="card-hd-icon">📋</span>
       <span class="card-hd-title">查房检查项</span>
-      <span class="card-hd-note" id="prog-checks">${done}/${CHECK_ITEMS.length}</span>
+      <span class="card-hd-note" id="prog-checks" style="margin-right:8px">${done}/${CHECK_ITEMS.length}</span>
+      <button class="btn btn-success btn-xs" onclick="markAllNormal()"
+        style="font-size:12px;padding:5px 10px">✓ 全部正常</button>
     </div>`;
   CHECK_ITEMS.forEach(item=>{
     const v=insState.checks[item.id]||'';
@@ -967,6 +965,25 @@ function setChk(id,val){
   const done=CHECK_ITEMS.filter(i=>insState.checks[i.id]).length;
   const el=document.getElementById('prog-checks');
   if(el) el.textContent=done+'/'+CHECK_ITEMS.length;
+}
+
+function markAllNormal(){
+  // 仅把"未标过状态"的项设为正常；已标 issue/na 的不动
+  let filled = 0;
+  CHECK_ITEMS.forEach(item=>{
+    if(!insState.checks[item.id]){
+      insState.checks[item.id] = 'ok';
+      filled++;
+    }
+  });
+  if(filled === 0){
+    toast('所有项目已标记，没有需要补勾的');
+    return;
+  }
+  // 刷新当前查房页面（重新渲染所有项目以更新按钮状态）
+  const def = ROOM_DEFS.find(r=>r.num===curRoom);
+  if(def) buildInsForm(def);
+  toast(`✓ 已将 ${filled} 项标记为正常`);
 }
 
 // Photos
@@ -1270,18 +1287,24 @@ function normalizeStaff(s){
 
 
 // ═══════════════════════════════════════════════════════
-// FIREBASE CLOUD SYNC
+// CLOUDBASE 云开发同步（替代原 Firebase 实现）
+// 函数名沿用 fs* 前缀以保持向后兼容
 // ═══════════════════════════════════════════════════════
-let db = null;
-let _fsListener = null;
+// 内置默认环境 ID：所有设备开箱即用；后台「云同步设置」里填的会覆盖此默认值
+const DEFAULT_CB_ENV = 'hotel-d7g7np86jc3934645';
 
-// Firestore document paths
+let db = null;          // CloudBase database 实例
+let _cbApp = null;      // cloudbase app 实例
+let _fsListener = null; // 实时监听器关闭函数（兼容旧变量名）
+
+// CloudBase 路径配置：collection + doc
 const FSP = {
-  rooms:       'hotel_config/rooms',
-  products:    'hotel_config/products',
-  staff:       'hotel_config/staff',
-  checkItems:  'hotel_config/check_items',
-  daily:       d => 'hotel_daily/' + d,
+  cfg:        'hotel_config',   // collection
+  rooms:      'rooms',          // doc id under cfg
+  products:   'products',
+  staff:      'staff',
+  checkItems: 'check_items',
+  daily:      'hotel_daily',    // collection；doc id = 日期字符串
 };
 
 function setSyncDot(state){
@@ -1295,50 +1318,86 @@ function getFbStoredConfig(){
   try{ return JSON.parse(localStorage.getItem('cfr_fb')||'null'); }catch(e){ return null; }
 }
 
+// 兼容旧函数名：实际上初始化 CloudBase
 async function initFirebase(cfg){
-  if(typeof firebase === 'undefined'){ setSyncDot('error'); return false; }
+  // cfg 可以是 { env: 'env-id-xxx' } 也可以兼容旧 firebase config 取其 projectId 当 env
+  const envId = cfg && (cfg.env || cfg.envId || cfg.projectId);
+  if(!envId){ setSyncDot('error'); return false; }
+  if(typeof cloudbase === 'undefined'){
+    console.error('CloudBase SDK 未加载');
+    setSyncDot('error'); return false;
+  }
   try{
-    if(!firebase.apps.length) firebase.initializeApp(cfg);
-    db = firebase.firestore();
+    _cbApp = cloudbase.init({ env: envId });
+    const auth = _cbApp.auth({ persistence: 'local' });
+    // 匿名登录（需在控制台开启匿名登录）
+    const loginState = await auth.getLoginState();
+    if(!loginState) await auth.signInAnonymously();
+    db = _cbApp.database();
     setSyncDot('online');
     return true;
   }catch(e){
-    console.error('Firebase init:', e);
-    db = null; setSyncDot('error');
+    console.error('CloudBase init:', e);
+    _cbApp = null; db = null;
+    setSyncDot('error');
     return false;
   }
 }
 
-// ── Load from Firestore (once, on startup) ──
+// CloudBase doc().get() 返回 { data: docObj | null | [] }，统一取出
+function _cbDocData(snap){
+  if(!snap || snap.data == null) return null;
+  if(Array.isArray(snap.data)) return snap.data.length ? snap.data[0] : null;
+  return snap.data;
+}
+
+// 先 update 再 set 的兜底写法（文档不存在时 update 会失败）
+async function _cbSetDoc(coll, id, payload){
+  try{
+    await db.collection(coll).doc(id).update(payload);
+  }catch(e){
+    // 文档不存在 → 创建。CloudBase set 不支持 merge，因此非首次写需要走 update 路径
+    try{
+      await db.collection(coll).doc(id).set(payload);
+    }catch(e2){
+      console.error('cb setDoc fail:', coll, id, e2);
+      throw e2;
+    }
+  }
+}
+
+// ── 启动时从云端一次性拉取 ──
 async function fsLoadAll(){
   if(!db) return;
   setSyncDot('syncing');
   try{
     const [rSnap, pSnap, dSnap, sSnap, cSnap] = await Promise.all([
-      db.doc(FSP.rooms).get(),
-      db.doc(FSP.products).get(),
-      db.doc(FSP.daily(todayKey())).get(),
-      db.doc(FSP.staff).get(),
-      db.doc(FSP.checkItems).get(),
+      db.collection(FSP.cfg).doc(FSP.rooms).get(),
+      db.collection(FSP.cfg).doc(FSP.products).get(),
+      db.collection(FSP.daily).doc(todayKey()).get(),
+      db.collection(FSP.cfg).doc(FSP.staff).get(),
+      db.collection(FSP.cfg).doc(FSP.checkItems).get(),
     ]);
-    if(rSnap.exists){ const d=rSnap.data(); if(Array.isArray(d.defs)&&d.defs.length) ROOM_DEFS=d.defs; }
-    if(pSnap.exists){
-      const d=pSnap.data();
-      if(Array.isArray(d.items)&&d.items.length) products=d.items;
-      if(d.stock) stockData=d.stock;
+    const rData = _cbDocData(rSnap);
+    if(rData && Array.isArray(rData.defs) && rData.defs.length) ROOM_DEFS = rData.defs;
+    const pData = _cbDocData(pSnap);
+    if(pData){
+      if(Array.isArray(pData.items) && pData.items.length) products = pData.items;
+      if(pData.stock) stockData = pData.stock;
     }
-    if(sSnap.exists){ const d=sSnap.data(); if(Array.isArray(d.list)) staffList=d.list; }
-    if(cSnap.exists){ const d=cSnap.data(); if(Array.isArray(d.items)&&d.items.length) CHECK_ITEMS=d.items; }
-    if(dSnap.exists){
-      const d=dSnap.data();
-      // Merge: keep local photos, use cloud status/checks/inventory
-      if(d.rooms){
-        Object.keys(d.rooms).forEach(num=>{
+    const sData = _cbDocData(sSnap);
+    if(sData && Array.isArray(sData.list)) staffList = sData.list;
+    const cData = _cbDocData(cSnap);
+    if(cData && Array.isArray(cData.items) && cData.items.length) CHECK_ITEMS = cData.items;
+    const dData = _cbDocData(dSnap);
+    if(dData){
+      if(dData.rooms){
+        Object.keys(dData.rooms).forEach(num=>{
           const localPhotos = (roomData[num]||{}).photos || [];
-          roomData[num] = {...(roomData[num]||{}), ...d.rooms[num], photos: localPhotos};
+          roomData[num] = {...(roomData[num]||{}), ...dData.rooms[num], photos: localPhotos};
         });
       }
-      if(d.consumed) consumed=d.consumed;
+      if(dData.consumed) consumed = dData.consumed;
     }
     ROOM_DEFS.forEach(r=>{ if(!roomData[r.num]) roomData[r.num]={status:'pending'}; });
     setSyncDot('online');
@@ -1348,44 +1407,46 @@ async function fsLoadAll(){
   }
 }
 
-// ── Real-time listener for today's room data ──
+// ── 实时监听今日房间数据 ──
 function setupFsListeners(){
   if(!db) return;
-  if(_fsListener){ _fsListener(); _fsListener=null; }
-  _fsListener = db.doc(FSP.daily(todayKey())).onSnapshot(snap=>{
-    if(!snap.exists||!snap.metadata.hasPendingWrites){
-      // Remote update (not our own write)
-      if(snap.exists){
-        const d=snap.data();
-        if(d.rooms){
-          Object.keys(d.rooms).forEach(num=>{
-            const localPhotos=(roomData[num]||{}).photos||[];
-            roomData[num]={...(roomData[num]||{}),...d.rooms[num],photos:localPhotos};
-          });
-        }
-        if(d.consumed) consumed=d.consumed;
-        localStorage.setItem('cfr_rooms_'+todayKey(), JSON.stringify(roomData));
+  if(_fsListener){ try{ _fsListener(); }catch(e){} _fsListener=null; }
+  const dateKey = todayKey();
+  // CloudBase watch 在 collection 上 + where 过滤；这里我们 watch 指定 _id 的文档
+  const watcher = db.collection(FSP.daily).where({_id: dateKey}).watch({
+    onChange: snap=>{
+      const docs = snap && snap.docs;
+      if(!docs || !docs.length){ setSyncDot('online'); return; }
+      const d = docs[0];
+      if(d.rooms){
+        Object.keys(d.rooms).forEach(num=>{
+          const localPhotos=(roomData[num]||{}).photos||[];
+          roomData[num]={...(roomData[num]||{}),...d.rooms[num],photos:localPhotos};
+        });
       }
-      // Refresh visible screens
+      if(d.consumed) consumed=d.consumed;
+      localStorage.setItem('cfr_rooms_'+todayKey(), JSON.stringify(roomData));
+      // 刷新可见屏幕
       const dashEl=document.getElementById('sdash');
       const rptEl =document.getElementById('sreport');
-      if(dashEl&&dashEl.classList.contains('active')) renderDash();
-      if(rptEl &&rptEl .classList.contains('active')) renderReport();
-    }
-    setSyncDot('online');
-  }, err=>{ console.error('FS listener:', err); setSyncDot('error'); });
+      if(dashEl&&dashEl.classList.contains('active') && typeof renderDash==='function')   renderDash();
+      if(rptEl &&rptEl .classList.contains('active') && typeof renderReport==='function') renderReport();
+      setSyncDot('online');
+    },
+    onError: err=>{ console.error('CB watch:', err); setSyncDot('error'); }
+  });
+  _fsListener = function(){ try{ watcher.close(); }catch(e){} };
 }
 
-// ── Firestore write helpers (fire-and-forget) ──
+// ── 写入助手 ──
 async function fsSyncRooms(){
   if(!db) return;
   setSyncDot('syncing');
-  // Strip photos before uploading (too large)
   const stripped = {};
   Object.keys(roomData).forEach(k=>{
     const r={...roomData[k]}; delete r.photos; stripped[k]=r;
   });
-  await db.doc(FSP.daily(todayKey())).set({rooms: stripped},{merge:true});
+  await _cbSetDoc(FSP.daily, todayKey(), {rooms: stripped});
   setSyncDot('online');
 }
 
@@ -1393,47 +1454,28 @@ async function fsSyncAdmin(){
   if(!db) return;
   setSyncDot('syncing');
   await Promise.all([
-    db.doc(FSP.products).set({items:products, stock:stockData}),
-    db.doc(FSP.daily(todayKey())).set({consumed},{merge:true}),
+    _cbSetDoc(FSP.cfg, FSP.products, {items:products, stock:stockData}),
+    _cbSetDoc(FSP.daily, todayKey(), {consumed}),
   ]);
   setSyncDot('online');
 }
 
 async function fsSyncRoomDefs(){
   if(!db) return;
-  await db.doc(FSP.rooms).set({defs:ROOM_DEFS});
+  await _cbSetDoc(FSP.cfg, FSP.rooms, {defs:ROOM_DEFS});
 }
 
 async function fsSyncStaff(){
   if(!db) return;
-  await db.doc(FSP.staff).set({list:staffList});
+  await _cbSetDoc(FSP.cfg, FSP.staff, {list:staffList});
 }
 
 async function fsSyncCheckItems(){
   if(!db) return;
-  await db.doc(FSP.checkItems).set({items:CHECK_ITEMS});
+  await _cbSetDoc(FSP.cfg, FSP.checkItems, {items:CHECK_ITEMS});
 }
 
 // ── Firebase config UI ──
-
-function parseFbConfigText(raw){
-  // Accept: plain key:value lines, JSON object, or full firebaseConfig = {...}
-  let clean = raw.trim();
-  // Extract content inside braces if present
-  const m = clean.match(/\{([\s\S]*)\}/);
-  if(m) clean = m[1];
-  // Convert JS object literals to JSON
-  clean = clean
-    .replace(/\/\/.*$/gm,'')          // remove // comments
-    .replace(/,\s*$/,'')              // trailing comma
-    .replace(/([{,]\s*)(\w+)\s*:/g,'$1"$2":') // quote keys
-    .replace(/:\s*"([^"]*)"/g, (_, v) => `:"${v}"`) // keep quoted
-    .replace(/:\s*([^",\n\{\}]+)/g, (full, v) => { // quote bare values
-      v=v.trim(); if(v==='true'||v==='false'||v==='null'||!isNaN(v)) return ':'+v;
-      return `:"${v}"`;
-    });
-  try{ return JSON.parse('{'+clean+'}'); }catch(e){ return null; }
-}
 
 
 // ═══════════════════════════════════════════════════════
@@ -1452,9 +1494,10 @@ function afterLoad(){
   }
 }
 
-// Try to init Firebase if config stored, then re-render with cloud data
-const _fbCfg = getFbStoredConfig();
-if(_fbCfg && typeof firebase !== 'undefined'){
+// 启动时自动连接 CloudBase：优先用 localStorage 配置，没有就用内置 DEFAULT_CB_ENV
+const _storedCfg = getFbStoredConfig();
+const _fbCfg = _storedCfg || (DEFAULT_CB_ENV ? { env: DEFAULT_CB_ENV } : null);
+if(_fbCfg && typeof cloudbase !== 'undefined'){
   initFirebase(_fbCfg).then(ok=>{
     if(ok){
       fsLoadAll().then(()=>{
